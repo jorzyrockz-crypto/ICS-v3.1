@@ -1,7 +1,87 @@
 # Project ICS v3 - Status Checkpoint
 
-Last updated: 2026-02-13
+Last updated: 2026-02-14
 Main file: `ics_v_3_standalone_index.html`
+
+## Newly Implemented (2026-02-14, responsive UX + notifications + dashboard/readability pass)
+- Versioning advanced again:
+  - app/UI version updated to `3.3` (manifest + runtime fallback)
+  - schema/export version updated to `3.3.0` (`ICS_SCHEMA_VERSION`)
+  - service worker cache version updated to `ics-v3-pwa-v74`
+- Responsive shell/navigation upgrades:
+  - mobile and tablet portrait now support bottom-nav treatment with center `New ICS` action
+  - topbar/profile/bell placement tuned for compact layouts
+  - floating form close behavior improved (`Esc` and outside-click close support)
+- Table/mobile UX upgrades:
+  - horizontal table scrolling treatment applied across dense table surfaces on mobile/tablet portrait
+  - ICS Records status moved out of ICS No. cell into dedicated `Status` column
+  - status visuals compacted to dot+label markers for cleaner scan density
+  - Total Value cell decluttered by moving depreciation detail into info tooltip action
+- Archive Details/ICS Details visual alignment:
+  - Archive Details modal refactored to ICS-style card structure (`icsd-*` patterns)
+  - responsive archive details layout improved for narrow screens
+- Notification Center overhaul:
+  - new header actions (`Mark all read`, `Clear read`)
+  - filter tabs (`All`, `Unread`, `Alerts`, `System`)
+  - grouped feed buckets (`Now`, `Today`, `Earlier`)
+  - iconized rows with per-item actions (toggle read/unread, delete)
+  - notification deduping with count badges and expanded retention limit
+  - mobile notification placement and panel behavior refined
+- Dashboard KPI readability fix:
+  - `Total Asset Value` now clips safely in-card and supports horizontal ticker animation on overflow
+
+## Newly Implemented (2026-02-14, follow-up polish + fixes in this session)
+- Versioning advanced:
+  - app/UI version updated to `3.2` (manifest + runtime fallback)
+  - schema/export version updated to `3.2.0` (`ICS_SCHEMA_VERSION`)
+- Lucide icon migration completed app-wide:
+  - replaced remaining inline SVG usage in shell, dashboard, action tables, details/history views, form row actions, Data Hub cards, and profile/avatar icon templates
+  - local Lucide runtime integrated from repo-local vendor asset (`vendor/lucide.min.js`) with no runtime CDN dependency
+  - automatic icon hydration added (`window.refreshIcons` + mutation observer) so dynamically rendered content resolves icons reliably
+  - click-hit reliability patch added (`.lucide { pointer-events:none; }`) to avoid center-click dead zones on icon buttons
+  - icon optical alignment pass applied (consistent stroke caps/joins and container baseline normalization)
+- Data Hub modal visual redesign completed:
+  - updated to card-based layout matching current design direction (icon/title header, close pill, 2+1 action card grid, helper footer row with version chip)
+- Action Center modal reliability fixes:
+  - resolved `Inspection History` opening failures by adding robust overlay/body fallback injection when missing from live DOM
+  - added icon refresh after history content render to ensure print/history icons appear immediately
+  - hardened `Unserviceable` inspection flow with fallback modal injection and explicit error path if modal nodes are unavailable
+- Dashboard dark-theme readability updates:
+  - improved `Recent ICS Activity` contrast in `dracula` and `crimson-black` (widget surface, header/body text, link color, neutral badges, borders, empty-state text)
+  - adjusted table surface to inherit widget background consistently in dark themes
+- Sidebar collapse feature added:
+  - desktop collapsible sidebar with brand toggle control, icon mode, and persisted state (`icsSidebarCollapsed`)
+  - collapse state survives reload and re-applies on resize with desktop/mobile guard behavior
+  - collapsed sidebar keeps quick profile access (avatar click opens profile)
+- Service worker/prefetch updates:
+  - cache version advanced iteratively through this session; current cache version now `ics-v3-pwa-v73`
+
+## Newly Implemented (2026-02-14, ICS Details + Dashboard + Sidebar UI overhaul)
+- ICS Details modal redesign and simplification:
+  - rebuilt into a cleaner two-column + full-width items layout with improved visual hierarchy
+  - removed non-essential technical noise for non-admin users (advanced lineage visibility is role-aware)
+  - removed footer action cluster and retained top-right close control
+  - moved record history into a dedicated modal (`Record history - <ICS No.>`) with keyboard and outside-click close support
+  - removed inline `Add inspection` / `Archive item` controls from ICS Details per workflow simplification
+  - removed in-modal tip copy for cleaner presentation
+- Dashboard top-level redesign:
+  - replaced previous top-level dashboard shell with card-based executive layout:
+    - KPI strip (`Total ICS Records`, `Within EUL`, `Outside EUL`, `Total Asset Value`)
+    - action cards (`Import Center`, `Export Center`, `Action Center`, `Archives`)
+    - right-side `Compliance Health` card with dynamic badge and progress bars
+  - restored shared/original header banner (`renderWelcomeBanner('Dashboard')`) for consistency with other views
+  - removed temporary extra custom top-nav block after alignment pass
+- Dashboard bottom intelligence sections added:
+  - `Recent ICS Activity` table (latest records + status + EUL + value + last action)
+  - `Today's Notes` with live cards:
+    - `Last sync` now shows backup/import history (`icsLastFullBackupAt`, `icsLastImportAt`)
+    - `Integrity` summarizes lineage readiness vs mismatches
+    - `Reminders` highlights outside-EUL action demand
+- Sidebar facelift:
+  - refreshed nav spacing, icon containers, hover/active states, and typography for stronger coherence
+  - `Action Center` menu item updated to shield-style logo treatment and full label text (`Action Center`)
+  - dark-theme sidebar nav/icon styling patched for consistency
+- Service worker cache updated iteratively during UI rollout; current cache version now `ics-v3-pwa-v73`.
 
 ## Newly Implemented (2026-02-13, access control + lineage hardening + modularization)
 - Role/access controls are now enforced centrally:
@@ -332,6 +412,29 @@ Main file: `ics_v_3_standalone_index.html`
    - Confirm records/activity are restored to previous state.
 
 ## Changelog (Recent)
+- 2026-02-14:
+  - Bumped app/UI baseline to `3.3`, schema/export baseline to `3.3.0`, and service worker cache to `ics-v3-pwa-v74`.
+  - Added bottom-nav responsive pattern for mobile + tablet portrait, including center `New ICS` action and adjusted shell spacing.
+  - Added global mobile/tablet horizontal-scroll behavior for dense tables.
+  - Refactored Archive Details modal into ICS-style card layout (`icsd-*`) with improved responsive behavior.
+  - Upgraded Notification Center with filters, bulk actions, grouping, dedupe counts, row actions, and iconized entries.
+  - Improved Dashboard `Total Asset Value` overflow behavior via clipping + horizontal ticker animation.
+  - Updated ICS Records table structure with dedicated status column and compact status indicators.
+  - Moved depreciation display detail into tooltip-driven info action to reduce table clutter.
+  - Updated app/UI version to `3.2` and schema/export baseline to `3.2.0`.
+  - Added app-wide Lucide icon standardization with local vendor runtime, dynamic icon hydration, and icon click-hit alignment fixes.
+  - Redesigned Data Hub modal to updated card layout (header icon block, action cards, helper/footer row).
+  - Fixed Action Center `Inspection History` modal open reliability and hardened inspection modal fallback creation path.
+  - Improved `Recent ICS Activity` readability in dark themes and aligned table background inheritance with widget surfaces.
+  - Added desktop collapsible sidebar with persisted state and compact-icon mode.
+  - Advanced service worker cache versions throughout changes up to `ics-v3-pwa-v73`.
+  - Reworked ICS Details modal into a cleaner operator-focused layout and moved deep record history into a dedicated modal.
+  - Simplified ICS Details actions/visibility (retained top-right close, removed non-essential controls/noise for standard users).
+  - Redesigned Dashboard top-level UI into KPI + actions + compliance architecture and restored shared welcome banner consistency.
+  - Added `Recent ICS Activity` and `Today's Notes` bottom sections with dynamic sync/integrity/reminder messaging.
+  - Updated `Last sync` semantics to show last full backup/import history instead of plain render timestamp.
+  - Applied sidebar visual facelift and updated `Action Center` nav branding (shield icon + title treatment).
+  - Advanced service worker cache versions throughout changes up to `ics-v3-pwa-v62`.
 - 2026-02-13:
   - Completed centralized role/access guard model (`ACCESS_RULES` + `requireAccess`) and enforced across major paths.
   - Added immutable record lineage timeline (`_lineage`) with version/hash chain and integrity verification.

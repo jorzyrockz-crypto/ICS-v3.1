@@ -27,6 +27,12 @@ function resetSheetPlacement(){
   sheet.style.transform = '';
 }
 
+function closeSheet(){
+  if (!sheet) return;
+  sheet.classList.remove('show');
+  resetSheetPlacement();
+}
+
 function placeSheetNearAddItemButton(){
   // Keep the floating form anchored to its default bottom-centered layout.
   resetSheetPlacement();
@@ -130,8 +136,7 @@ function renderView(key){
     }
   } else {
     fab.style.display = 'none';
-    sheet.classList.remove('show');
-    resetSheetPlacement();
+    closeSheet();
     if (key === 'Dashboard') initDashboardView();
     if (key === 'Action Center') initActionsView();
     if (key === 'Archives') initArchivesView();
@@ -143,8 +148,7 @@ function toggleSheet(){
   if (!requireAccess('open_ics_editor')) return;
   const isOpen = sheet.classList.contains('show');
   if (isOpen){
-    sheet.classList.remove('show');
-    resetSheetPlacement();
+    closeSheet();
     return;
   }
   sheet.classList.add('show');
@@ -178,7 +182,8 @@ function initArchivesView(){
   const canArchive = hasRoleCapability('archive_items');
   const body = document.getElementById('archiveBody');
   if (!body) return;
-  const archived = getArchivedItems().filter((a) => {
+  const allArchived = getArchivedItems();
+  const archived = allArchived.filter((a) => {
     if (!archivesFilterIcs) return true;
     return normalizeICSKey(a.source?.icsNo || '') === normalizeICSKey(archivesFilterIcs);
   });
@@ -186,11 +191,14 @@ function initArchivesView(){
     body.innerHTML = '<tr><td class="empty-cell" colspan="10">No archived items yet.</td></tr>';
     return;
   }
-  body.innerHTML = archived.map((a, idx) => `
+  body.innerHTML = archived.map((a, idx) => {
+    const realIdx = allArchived.findIndex((entry) => entry === a);
+    const actionIdx = realIdx >= 0 ? realIdx : idx;
+    return `
     <tr>
       <td>${idx + 1}</td>
       <td>${(a.archivedAt || '').slice(0,10)}</td>
-      <td><button class="ics-link-btn" onclick="openArchivedItemHistory(${idx})">${a.source?.icsNo || ''}</button></td>
+      <td><button class="ics-link-btn" onclick="openArchivedItemHistory(${actionIdx})">${a.source?.icsNo || ''}</button></td>
       <td>${a.item?.desc || ''}</td>
       <td>${a.item?.itemNo || ''}</td>
       <td style="text-align:center">${a.item?.eul ?? ''}</td>
@@ -198,10 +206,11 @@ function initArchivesView(){
       <td>${a.disposal?.approvedBy || '-'}</td>
       <td>${a.disposal?.remarks || '-'}</td>
       <td style="text-align:center">
-        <button class="small-btn add icon-only-btn" title="Unarchive Item" aria-label="Unarchive Item" onclick="unarchiveItem(${idx})" ${canArchive ? '' : 'disabled'}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-7h2v7h12v-7h2zM12 3l5 5h-3v6h-4V8H7l5-5z"/></svg></button>
+        <button class="small-btn add icon-only-btn" title="Unarchive Item" aria-label="Unarchive Item" onclick="unarchiveItem(${actionIdx})" ${canArchive ? '' : 'disabled'}><i data-lucide="undo-2" aria-hidden="true"></i></button>
       </td>
     </tr>
-  `).join('');
+  `;
+  }).join('');
 }
 
 function initActionsView(){
@@ -295,7 +304,7 @@ function renderEULPage(){
             <option value="serviceable">Serviceable</option>
             <option value="unserviceable">Unserviceable</option>
           </select>
-          <button class="small-btn add icon-only-btn" title="Inspection History" aria-label="Inspection History" onclick="openInspectionHistory('${row.icsNo.replace(/'/g, '&#39;')}','${(row.itemNo || '').replace(/'/g, '&#39;')}')"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 3a9 9 0 1 0 8.95 10h-2.02A7 7 0 1 1 13 5V1l4 3.5L13 8V3zm-1 5h2v5h4v2h-6V8z"/></svg></button>
+          <button class="small-btn add icon-only-btn" title="Inspection History" aria-label="Inspection History" onclick="openInspectionHistory('${row.icsNo.replace(/'/g, '&#39;')}','${(row.itemNo || '').replace(/'/g, '&#39;')}')"><i data-lucide="history" aria-hidden="true"></i></button>
         </div>
       </td>
       <td style="text-align:center">

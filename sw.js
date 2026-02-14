@@ -1,9 +1,10 @@
-const CACHE_VERSION = 'ics-v3-pwa-v43';
+const CACHE_VERSION = 'ics-v3-pwa-v74';
 const APP_SHELL = './ics_v_3_standalone_index.html';
 const PRECACHE = [
   './',
   './index.html',
   './ics_v_3_standalone_index.html',
+  './vendor/lucide.min.js',
   './core-storage-security.js',
   './core-shared-utils.js',
   './core-school-profile-normalization.js',

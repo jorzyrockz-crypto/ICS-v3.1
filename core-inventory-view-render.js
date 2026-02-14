@@ -41,6 +41,7 @@ ${renderWelcomeBanner('Manage Inventory')}
       <colgroup>
         <col class="c-idx">
         <col class="c-ics">
+        <col class="c-status">
         <col class="c-entity">
         <col class="c-issued">
         <col class="c-accountable">
@@ -51,7 +52,7 @@ ${renderWelcomeBanner('Manage Inventory')}
       </colgroup>
       <thead>
         <tr>
-          <th>#</th><th>ICS No.</th><th>Entity</th><th>Issued Date</th><th>Accountable Person</th><th>EUL Status</th><th>Total Items</th><th>Total Value</th><th>Actions</th>
+          <th>#</th><th>ICS No.</th><th>Status</th><th>Entity</th><th>Issued Date</th><th>Accountable Person</th><th>EUL Status</th><th>Total Items</th><th>Total Value</th><th>Actions</th>
         </tr>
       </thead>
       <tbody id="icsRecords"></tbody>

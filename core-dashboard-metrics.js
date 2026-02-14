@@ -77,12 +77,51 @@ function initDashboardView(){
   });
 
   const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+  const applyValueTicker = (id) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const raw = (el.textContent || '').toString().trim();
+    el.classList.remove('value-scroll', 'is-overflow');
+    el.style.removeProperty('--ticker-distance');
+    el.style.removeProperty('--ticker-duration');
+    el.textContent = raw;
+    if (!raw) return;
+    el.classList.add('value-scroll');
+    const track = document.createElement('span');
+    track.className = 'value-scroll-track';
+    track.textContent = raw;
+    el.textContent = '';
+    el.appendChild(track);
+    requestAnimationFrame(() => {
+      const overflow = track.scrollWidth > el.clientWidth + 2;
+      if (!overflow) return;
+      const distance = Math.max(track.scrollWidth - el.clientWidth, 0);
+      const duration = Math.max(6, distance / 26);
+      el.style.setProperty('--ticker-distance', `${distance}px`);
+      el.style.setProperty('--ticker-duration', `${duration}s`);
+      el.classList.add('is-overflow');
+    });
+  };
   set('dashKpiRecords', String(records.length));
   set('dashKpiItems', String(totalItems));
   set('dashKpiDue', String(dueSoon));
   set('dashKpiPast', String(pastDue));
   set('dashKpiArchived', String(archived.length));
   set('dashKpiDep', formatCurrencyValue(totalDep) || '0.00');
+  set('dashKpiWithin', String(Math.max(totalItems - pastDue, 0)));
+  set('dashKpiOutside', String(pastDue));
+  set('dashKpiAsset', formatCurrencyValue(totalValue) || '0.00');
+  applyValueTicker('dashKpiAsset');
+  setTimeout(() => applyValueTicker('dashKpiAsset'), 80);
+  setTimeout(() => applyValueTicker('dashKpiAsset'), 260);
+  if (!window.__dashAssetTickerResizeBound){
+    let dashTickerResizeTimer = null;
+    window.addEventListener('resize', () => {
+      clearTimeout(dashTickerResizeTimer);
+      dashTickerResizeTimer = setTimeout(() => applyValueTicker('dashKpiAsset'), 90);
+    });
+    window.__dashAssetTickerResizeBound = true;
+  }
   set('dashMiniBookValue', formatCurrencyValue(totalValue) || '0.00');
   set('dashMiniAvgItems', records.length ? (totalItems / records.length).toFixed(1) : '0');
   const healthyItems = Math.max(totalItems - dueSoon - pastDue, 0);
@@ -101,6 +140,27 @@ function initDashboardView(){
   const healthNote = document.getElementById('dashHealthNote');
   if (healthNote){
     healthNote.textContent = `Health score is based on active items not yet due or past EUL (${healthyItems} of ${totalItems}).`;
+  }
+  const withinPct = totalItems ? Math.round((Math.max(totalItems - pastDue, 0) / totalItems) * 100) : 100;
+  const outsidePct = totalItems ? Math.round((pastDue / totalItems) * 100) : 0;
+  set('dashComplianceWithinPct', `${withinPct}%`);
+  set('dashComplianceOutsidePct', `${outsidePct}%`);
+  const withinBar = document.getElementById('dashComplianceWithinBar');
+  const outsideBar = document.getElementById('dashComplianceOutsideBar');
+  if (withinBar) withinBar.style.width = `${Math.max(0, Math.min(100, withinPct))}%`;
+  if (outsideBar) outsideBar.style.width = `${Math.max(0, Math.min(100, outsidePct))}%`;
+  const complianceBadge = document.getElementById('dashComplianceBadge');
+  if (complianceBadge){
+    if (outsidePct >= 30){
+      complianceBadge.textContent = 'Needs review';
+      complianceBadge.className = 'dash-compliance-badge danger';
+    } else if (outsidePct >= 15){
+      complianceBadge.textContent = 'Watch';
+      complianceBadge.className = 'dash-compliance-badge warn';
+    } else {
+      complianceBadge.textContent = 'Stable';
+      complianceBadge.className = 'dash-compliance-badge ok';
+    }
   }
 
   const attention = [
@@ -160,6 +220,69 @@ function initDashboardView(){
     riskEl.innerHTML = topRisk.length
       ? topRisk.map((r, i) => `<tr><td>${i + 1}</td><td><button class="ics-link-btn" onclick="openICSDetailsByKey('${escapeHTML(r.icsNo)}','${escapeHTML(r.itemNo)}')">${escapeHTML(r.icsNo)}</button></td><td>${escapeHTML(r.itemNo)}</td><td>${escapeHTML(r.desc)}</td><td><span class="risk-badge ${r.code === 'past' ? 'danger' : 'warn'}">${escapeHTML(r.status)}</span></td></tr>`).join('')
       : '<tr><td colspan="5" class="empty-cell">No risk items right now.</td></tr>';
+  }
+
+  const recentIcsRows = records.map((r) => {
+    const m = computeRecordMetrics(r);
+    const items = Array.isArray(r.items) ? r.items : [];
+    const allOk = items.length > 0 && items.every((it) => classifyEULItem(r, it).code === 'ok');
+    const eulLabel = allOk ? 'Within EUL' : 'Outside EUL';
+    const eulTone = allOk ? 'ok' : 'danger';
+    const lineage = normalizeRecordLineage(r?._lineage || r?.lineage);
+    const latestLineage = (lineage?.versions || []).slice().reverse()[0] || null;
+    const statusMeta = r?._statusMeta || {};
+    const statusRaw = (statusMeta.type || latestLineage?.action || 'updated').toString().toLowerCase();
+    const actionLabel = statusRaw === 'imported' ? 'Imported' : (statusRaw === 'new' ? 'New' : 'Updated');
+    const actionAtRaw = latestLineage?.at || statusMeta.at || '';
+    const actionAtDate = new Date(actionAtRaw);
+    const actionAt = Number.isFinite(actionAtDate.getTime()) ? actionAtDate.toLocaleString() : '-';
+    return {
+      icsNo: r.icsNo || '-',
+      entity: r.entity || '-',
+      accountable: r.accountable || '-',
+      eulLabel,
+      eulTone,
+      totalValue: formatCurrencyValue(m.totalValue) || '0.00',
+      actionLabel,
+      actionAt,
+      sortAt: Number.isFinite(actionAtDate.getTime()) ? actionAtDate.getTime() : 0
+    };
+  }).sort((a, b) => b.sortAt - a.sortAt).slice(0, 4);
+  const recentIcsEl = document.getElementById('dashRecentIcsRows');
+  if (recentIcsEl){
+    recentIcsEl.innerHTML = recentIcsRows.length
+      ? recentIcsRows.map((r, i) => `<tr>
+          <td>${i + 1}</td>
+          <td><button class="ics-link-btn" onclick="openICSDetailsByKey('${escapeHTML(r.icsNo)}','')">${escapeHTML(r.icsNo)}</button> <span class="risk-badge">${escapeHTML(r.actionLabel)}</span></td>
+          <td>${escapeHTML(r.entity)}</td>
+          <td>${escapeHTML(r.accountable)}</td>
+          <td><span class="risk-badge ${r.eulTone}">${escapeHTML(r.eulLabel)}</span></td>
+          <td>${escapeHTML(r.totalValue)}</td>
+          <td>${escapeHTML(r.actionAt)}</td>
+        </tr>`).join('')
+      : '<tr><td colspan="7" class="empty-cell">No recent ICS activity.</td></tr>';
+  }
+
+  const dashNoteSync = document.getElementById('dashNoteSync');
+  if (dashNoteSync){
+    const lastBackup = localStorage.getItem('icsLastFullBackupAt');
+    const lastImport = localStorage.getItem('icsLastImportAt');
+    const backupText = lastBackup ? new Date(lastBackup).toLocaleString() : 'Never';
+    const importText = lastImport ? new Date(lastImport).toLocaleString() : 'Never';
+    dashNoteSync.textContent = `Last full backup: ${backupText} | Last import: ${importText}.`;
+  }
+  const mismatchCount = records.reduce((sum, r) => sum + (verifyRecordLineage(r || {}).ok ? 0 : 1), 0);
+  const dashNoteIntegrity = document.getElementById('dashNoteIntegrity');
+  if (dashNoteIntegrity){
+    dashNoteIntegrity.textContent = mismatchCount
+      ? `${mismatchCount} record(s) need lineage review before formal export/reporting.`
+      : 'Traceability metadata is ready for exports and reporting.';
+  }
+  const dashNoteReminders = document.getElementById('dashNoteReminders');
+  if (dashNoteReminders){
+    dashNoteReminders.textContent = pastDue
+      ? `Review ${pastDue} outside-EUL item(s) in Action Center.`
+      : 'No outside-EUL alerts at the moment.';
   }
 
   const emptyHint = document.getElementById('dashEmptyHint');

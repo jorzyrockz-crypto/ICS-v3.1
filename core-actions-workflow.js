@@ -112,12 +112,62 @@ function onInspectionChange(sel, icsNo, itemNo){
   if (sel.value === 'unserviceable'){
     pendingInspection = { icsNo, itemNo };
     sel.value = '';
-    clearFieldErrors(document.getElementById('inspectionOverlay'));
-    document.getElementById('inspReason').value = '';
-    document.getElementById('inspDate').value = '';
-    document.getElementById('inspNotes').value = '';
-    const overlay = document.getElementById('inspectionOverlay');
-    if (overlay) overlay.classList.add('show');
+    let overlay = document.getElementById('inspectionOverlay');
+    let reasonEl = document.getElementById('inspReason');
+    let dateEl = document.getElementById('inspDate');
+    let notesEl = document.getElementById('inspNotes');
+    if (!overlay || !reasonEl || !dateEl || !notesEl){
+      const shell = document.createElement('div');
+      shell.innerHTML = `
+        <div class="actions-modal-overlay" id="inspectionOverlay">
+          <div class="actions-modal modal-sm">
+            <div class="modal-head">
+              <h3>Inspection Result - Unserviceable</h3>
+              <p class="modal-sub">Record situation details before proceeding to archive or report actions.</p>
+            </div>
+            <div class="modal-body">
+              <div class="form-col modal-form">
+                <label>Situation</label>
+                <select id="inspReason" class="stage-input">
+                  <option value="">Select Situation</option>
+                  <option>Item beyond EUL and unserviceable</option>
+                  <option>Item damaged / obsolete</option>
+                  <option>Item for disposal</option>
+                  <option>Item transferred to another office</option>
+                  <option>Item lost / destroyed</option>
+                </select>
+                <label>Date</label>
+                <input id="inspDate" type="date" class="stage-input" />
+                <label>Remarks</label>
+                <textarea id="inspNotes" class="stage-input" rows="3" placeholder="Remarks / inspection notes"></textarea>
+              </div>
+            </div>
+            <div class="modal-foot">
+              <div class="ics-card-actions">
+                <button class="small-btn add" onclick="closeInspectionModal()">Cancel</button>
+                <button id="inspSaveBtn" class="small-btn finalize" onclick="saveInspection()" disabled>Save</button>
+                <button id="inspArchiveBtn" class="small-btn finalize" onclick="saveInspectionAndArchive()" disabled>Archive Item</button>
+              </div>
+            </div>
+          </div>
+        </div>`;
+      const injected = shell.firstElementChild;
+      if (injected) document.body.appendChild(injected);
+      overlay = document.getElementById('inspectionOverlay');
+      reasonEl = document.getElementById('inspReason');
+      dateEl = document.getElementById('inspDate');
+      notesEl = document.getElementById('inspNotes');
+      bindInspectionModalValidation();
+    }
+    clearFieldErrors(overlay || document);
+    if (!overlay || !reasonEl || !dateEl || !notesEl){
+      notify('error', 'Inspection modal is unavailable. Reload the page and try again.');
+      return;
+    }
+    reasonEl.value = '';
+    dateEl.value = '';
+    notesEl.value = '';
+    overlay.classList.add('show');
     updateInspectionArchiveButtonState();
   }
 }
@@ -224,9 +274,27 @@ function updateInspectionArchiveButtonState(){
 }
 
 function openInspectionHistory(icsNo, itemNo){
-  const body = document.getElementById('inspectionHistoryBody');
-  const overlay = document.getElementById('inspectionHistoryOverlay');
-  if (!body || !overlay) return;
+  let body = document.getElementById('inspectionHistoryBody');
+  let overlay = document.getElementById('inspectionHistoryOverlay');
+  if (!body || !overlay){
+    const shell = document.createElement('div');
+    shell.innerHTML = `
+      <div class="actions-modal-overlay" id="inspectionHistoryOverlay">
+        <div class="actions-modal modal-lg inspection-history-modal">
+          <div class="modal-head inspection-history-head">
+            <h3 class="inspection-history-title">Inspection History</h3>
+            <button class="inspection-history-close" onclick="closeInspectionHistory()">Close</button>
+          </div>
+          <div class="modal-body" id="inspectionHistoryBody"></div>
+        </div>
+      </div>`;
+    const injected = shell.firstElementChild;
+    if (injected) document.body.appendChild(injected);
+    body = document.getElementById('inspectionHistoryBody');
+    overlay = document.getElementById('inspectionHistoryOverlay');
+    if (!body || !overlay) return;
+    if (typeof window.refreshIcons === 'function') window.refreshIcons();
+  }
   const ref = findItemRef(icsNo, itemNo);
   if (!ref){
     body.innerHTML = '<div class="inspection-history-empty">No inspection history found.</div>';
@@ -246,7 +314,7 @@ function openInspectionHistory(icsNo, itemNo){
     const statusClass = statusRaw === 'serviceable' ? 'ok' : (statusRaw === 'unserviceable' ? 'danger' : '');
     const canPrint = hasWasteReport && statusRaw === 'unserviceable';
     const actionCell = canPrint
-      ? `<button class="small-btn add icon-only-btn" title="Print Waste Report" aria-label="Print Waste Report" onclick="printWasteMaterialsReport('${(icsNo || '').replace(/'/g, '&#39;')}','${(itemNo || '').replace(/'/g, '&#39;')}')" ${canArchive ? '' : 'disabled'}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9V3h12v6H6zm10-4H8v2h8V5zM6 19v2h12v-2H6zm14-8h-2V9H6v2H4a2 2 0 0 0-2 2v4h4v-3h12v3h4v-4a2 2 0 0 0-2-2z"/></svg></button>`
+      ? `<button class="small-btn add icon-only-btn" title="Print Waste Report" aria-label="Print Waste Report" onclick="printWasteMaterialsReport('${(icsNo || '').replace(/'/g, '&#39;')}','${(itemNo || '').replace(/'/g, '&#39;')}')" ${canArchive ? '' : 'disabled'}><i data-lucide="printer" aria-hidden="true"></i></button>`
       : '-';
     const recordedBy = normalizeProfileKeyValue(log.recordedByProfileKey || log.recordedBy || log.by || '');
     const recordedMeta = `${log.recordedAt || '-'}${recordedBy ? ` | ${recordedBy}` : ''}`;
@@ -263,8 +331,8 @@ function openInspectionHistory(icsNo, itemNo){
   }).join('');
   const printToolbar = `
     <div style="display:flex;justify-content:flex-end;gap:8px;margin:0 0 8px">
-      <button class="small-btn add icon-only-btn" title="${canArchive ? 'Batch Print WMR' : archiveTitle}" aria-label="Batch Print WMR" ${sameICSPreparedItems.length && canArchive ? '' : 'disabled'} onclick="printWasteMaterialsReportForICS('${(icsNo || '').replace(/'/g, '&#39;')}')"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9V3h12v6H6zm10-4H8v2h8V5zM6 19v2h12v-2H6zm14-8h-2V9H6v2H4a2 2 0 0 0-2 2v4h4v-3h12v3h4v-4a2 2 0 0 0-2-2z"/></svg></button>
-      <button class="small-btn add icon-only-btn" title="${canArchive ? 'Print This Item' : archiveTitle}" aria-label="Print This Item" ${currentHasReport && canArchive ? '' : 'disabled'} onclick="printWasteMaterialsReport('${(icsNo || '').replace(/'/g, '&#39;')}','${(itemNo || '').replace(/'/g, '&#39;')}')"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9V3h12v6H6zm10-4H8v2h8V5zM6 19v2h12v-2H6zm14-8h-2V9H6v2H4a2 2 0 0 0-2 2v4h4v-3h12v3h4v-4a2 2 0 0 0-2-2z"/></svg></button>
+      <button class="small-btn add icon-only-btn" title="${canArchive ? 'Batch Print WMR' : archiveTitle}" aria-label="Batch Print WMR" ${sameICSPreparedItems.length && canArchive ? '' : 'disabled'} onclick="printWasteMaterialsReportForICS('${(icsNo || '').replace(/'/g, '&#39;')}')"><i data-lucide="printer" aria-hidden="true"></i></button>
+      <button class="small-btn add icon-only-btn" title="${canArchive ? 'Print This Item' : archiveTitle}" aria-label="Print This Item" ${currentHasReport && canArchive ? '' : 'disabled'} onclick="printWasteMaterialsReport('${(icsNo || '').replace(/'/g, '&#39;')}','${(itemNo || '').replace(/'/g, '&#39;')}')"><i data-lucide="printer" aria-hidden="true"></i></button>
     </div>`;
   body.innerHTML = logs.length ? `
     ${printToolbar}
@@ -284,6 +352,7 @@ function openInspectionHistory(icsNo, itemNo){
       </table>
     </div>
   ` : `${printToolbar}<div class="inspection-history-empty">No inspection history found.</div>`;
+  if (typeof window.refreshIcons === 'function') window.refreshIcons();
   overlay.classList.add('show');
 }
 

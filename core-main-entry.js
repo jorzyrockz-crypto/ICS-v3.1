@@ -8,6 +8,8 @@ const icsNoInput = document.getElementById('icsNo');
 const formAlert = document.getElementById('formAlert');
 const searchBtn = document.getElementById('searchBtn');
 const dataManagerBtn = document.getElementById('dataManagerBtn');
+const mobileProfileBtn = document.getElementById('mobileProfileBtn');
+const bottomNewIcsBtn = document.getElementById('bottomNewIcsBtn');
 const searchOverlay = document.getElementById('searchOverlay');
 const searchInput = document.getElementById('searchInput');
 const searchResults = document.getElementById('searchResults');
@@ -16,6 +18,7 @@ const notifPanel = document.getElementById('notifPanel');
 const notifBadge = document.getElementById('notifBadge');
 const sidebarProfileBtn = document.getElementById('sidebarProfileBtn');
 const sidebarSignOutIconBtn = document.getElementById('sidebarSignOutIconBtn');
+const sidebarToggleBtn = document.getElementById('sidebarToggleBtn');
 const installAppBtn = document.getElementById('installAppBtn');
 const sidebarUserAvatar = document.getElementById('sidebarUserAvatar');
 const sidebarUserName = document.getElementById('sidebarUserName');
@@ -70,8 +73,9 @@ let dataManagerState = {
   verification: null,
   migrationRows: []
 };
-const ICS_SCHEMA_VERSION = '3.1.0';
-const APP_UI_VERSION_FALLBACK = '3.1';
+const ICS_SCHEMA_VERSION = '3.3.0';
+const APP_UI_VERSION_FALLBACK = '3.3';
+const SIDEBAR_COLLAPSE_STORAGE_KEY = 'icsSidebarCollapsed';
 const PROFILE_VIEWS = ['Dashboard', 'Manage Inventory', 'Action Center', 'Archives'];
 const DEFAULT_DESIGNATIONS = ['Inventory Officer'];
 const ACCENT_THEMES = {
@@ -309,8 +313,60 @@ async function applyBrandSubVersionFromManifest(){
 
 applyBrandSubVersionFromManifest();
 
+function canUseCollapsedSidebarLayout(){
+  return window.matchMedia('(min-width: 981px)').matches;
+}
+
+function applySidebarCollapsedState(collapsed, options = {}){
+  const persist = options.persist !== false;
+  const next = canUseCollapsedSidebarLayout() ? !!collapsed : false;
+  document.body.classList.toggle('sidebar-collapsed', next);
+  if (sidebarToggleBtn){
+    const title = next ? 'Expand sidebar' : 'Collapse sidebar';
+    sidebarToggleBtn.setAttribute('aria-pressed', next ? 'true' : 'false');
+    sidebarToggleBtn.setAttribute('aria-label', title);
+    sidebarToggleBtn.title = title;
+    const icon = sidebarToggleBtn.querySelector('[data-lucide]');
+    if (icon) icon.setAttribute('data-lucide', next ? 'panel-left-open' : 'panel-left-close');
+  }
+  navItems.forEach((item) => {
+    const label = (item.querySelector('span:last-child')?.textContent || item.dataset.view || '').trim();
+    if (next){
+      if (label) item.title = label;
+      if (label) item.setAttribute('aria-label', label);
+    } else {
+      item.removeAttribute('title');
+      if (item.getAttribute('aria-label') === label) item.removeAttribute('aria-label');
+    }
+  });
+  if (persist){
+    localStorage.setItem(SIDEBAR_COLLAPSE_STORAGE_KEY, next ? '1' : '0');
+  }
+  if (typeof window.refreshIcons === 'function') window.refreshIcons();
+}
+
+function toggleSidebarCollapsed(forceState){
+  const next = typeof forceState === 'boolean'
+    ? forceState
+    : !document.body.classList.contains('sidebar-collapsed');
+  applySidebarCollapsedState(next);
+}
+
+function initializeSidebarCollapsedState(){
+  applySidebarCollapsedState(localStorage.getItem(SIDEBAR_COLLAPSE_STORAGE_KEY) === '1', { persist: false });
+  let resizeTimer = null;
+  window.addEventListener('resize', () => {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(() => {
+      const preferred = localStorage.getItem(SIDEBAR_COLLAPSE_STORAGE_KEY) === '1';
+      applySidebarCollapsedState(preferred, { persist: false });
+    }, 80);
+  });
+}
+
 
 initializeShellState();
+initializeSidebarCollapsedState();
 
 // ===== VIEWS =====
 

@@ -140,8 +140,9 @@ function renderValueCell(record){
   const total = formatCurrencyValue(m.totalValue);
   const dep = formatCurrencyValue(m.depreciatedValue);
   const ratio = m.totalValue > 0 ? (m.depreciatedValue / m.totalValue) : 1;
-  const depClass = ratio < 0.4 ? 'danger' : (ratio < 0.75 ? 'warn' : 'ok');
-  return `<div class="value-main">${total}</div><div class="value-sub"><span class="risk-badge ${depClass}">Depreciated</span> ${dep}</div>`;
+  const depPct = Math.max(0, Math.min(100, Math.round(ratio * 100)));
+  const tip = `Depreciated value: ${dep} (${depPct}% of total)`;
+  return `<div class="value-main value-main-inline">${total}<button class="value-info-btn" title="${escapeHTML(tip)}" aria-label="${escapeHTML(tip)}"><i data-lucide="info" aria-hidden="true"></i></button></div>`;
 }
 
 function loadICSRecords(){
@@ -159,8 +160,8 @@ function loadICSRecords(){
 
   if (rows.length === 0){
     body.innerHTML = inventoryFilter === 'missing'
-      ? '<tr><td class="empty-cell" colspan="9">No ICS records with missing data.</td></tr>'
-      : '<tr><td class="empty-cell" colspan="9">No ICS records yet. Add or import an ICS to get started.</td></tr>';
+      ? '<tr><td class="empty-cell" colspan="10">No ICS records with missing data.</td></tr>'
+      : '<tr><td class="empty-cell" colspan="10">No ICS records yet. Add or import an ICS to get started.</td></tr>';
     return;
   }
 
@@ -168,12 +169,13 @@ function loadICSRecords(){
     const r = entry.r;
     const i = entry.i;
     const metrics = computeRecordMetrics(r);
-    const statusPill = renderRecordStatusPill(r);
+    const statusMini = renderRecordStatusMini(r);
     const safeIcs = escapeHTML(r.icsNo || '');
     const safeEntity = escapeHTML(r.entity || '');
     const tr = document.createElement('tr');
     tr.innerHTML = `<td>${rowIdx + 1}</td>
-      <td><div class="ics-no-wrap"><div class="ics-no-line"><button class="ics-link-btn" title="${safeIcs}" aria-label="Open ICS ${safeIcs}" onclick="openICSDetailsByIndex(${i})">${safeIcs}</button>${statusPill}</div></div></td>
+      <td><div class="ics-no-wrap"><div class="ics-no-line"><button class="ics-link-btn" title="${safeIcs}" aria-label="Open ICS ${safeIcs}" onclick="openICSDetailsByIndex(${i})">${safeIcs}</button></div></div></td>
+      <td>${statusMini}</td>
       <td>${safeEntity}</td>
       <td>${r.issuedDate}</td>
       <td>${r.accountable}</td>
@@ -181,10 +183,10 @@ function loadICSRecords(){
       <td>${metrics.totalItems}</td>
       <td>${renderValueCell(r)}</td>
       <td>
-        <button class="small-btn add icon-only-btn" title="Edit ICS" aria-label="Edit ICS" onclick="editICS(${i})" ${canEdit ? '' : 'disabled'}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17.25V21h3.75L17.8 9.94l-3.75-3.75L3 17.25zm2.92 2.33H5v-.92l9.06-9.06.92.92L5.92 19.58zM20.7 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg></button>
-        <button class="small-btn add icon-only-btn" title="Print ICS" aria-label="Print ICS" onclick="printICS(${i})"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9V3h12v6H6zm10-4H8v2h8V5zM6 19v2h12v-2H6zm14-8h-2V9H6v2H4a2 2 0 0 0-2 2v4h4v-3h12v3h4v-4a2 2 0 0 0-2-2z"/></svg></button>
-        <button class="small-btn add icon-only-btn" title="Export ICS" aria-label="Export ICS" onclick="exportICS(${i})" ${canExport ? '' : 'disabled'}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l5 5h-3v6h-4V8H7l5-5zm-7 14h14v4H5v-4z"/></svg></button>
-        <button class="small-btn del icon-only-btn" title="Delete ICS" aria-label="Delete ICS" onclick="deleteICS(${i})" ${canDelete ? '' : 'disabled'}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3h6l1 2h4v2H4V5h4l1-2zm1 6h2v9h-2V9zm4 0h2v9h-2V9zM7 9h2v9H7V9z"/></svg></button>
+        <button class="small-btn add icon-only-btn" title="Edit ICS" aria-label="Edit ICS" onclick="editICS(${i})" ${canEdit ? '' : 'disabled'}><i data-lucide="pencil" aria-hidden="true"></i></button>
+        <button class="small-btn add icon-only-btn" title="Print ICS" aria-label="Print ICS" onclick="printICS(${i})"><i data-lucide="printer" aria-hidden="true"></i></button>
+        <button class="small-btn add icon-only-btn" title="Export ICS" aria-label="Export ICS" onclick="exportICS(${i})" ${canExport ? '' : 'disabled'}><i data-lucide="download" aria-hidden="true"></i></button>
+        <button class="small-btn del icon-only-btn" title="Delete ICS" aria-label="Delete ICS" onclick="deleteICS(${i})" ${canDelete ? '' : 'disabled'}><i data-lucide="trash-2" aria-hidden="true"></i></button>
       </td>`;
     body.appendChild(tr);
   });

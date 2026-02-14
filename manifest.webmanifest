@@ -1,7 +1,7 @@
 {
   "name": "Project ICS v3",
   "short_name": "ICS v3",
-  "version": "3.1",
+  "version": "3.3",
   "description": "Offline-ready inventory custody system for schools.",
   "start_url": "./ics_v_3_standalone_index.html",
   "scope": "./",

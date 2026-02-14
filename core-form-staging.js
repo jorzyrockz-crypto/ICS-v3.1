@@ -319,8 +319,8 @@ function addRow(seed = {}){
     </td>
     <td>
       <div class="stage-cell-actions">
-        <button class="small-btn add icon-only-btn" title="Add Row" aria-label="Add Row" onclick="addRow()"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 11H13V5h-2v6H5v2h6v6h2v-6h6v-2z"/></svg></button>
-        <button class="small-btn del icon-only-btn" title="Delete Row" aria-label="Delete Row" onclick="delRow(this)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3h6l1 2h4v2H4V5h4l1-2zm1 6h2v9h-2V9zm4 0h2v9h-2V9zM7 9h2v9H7V9z"/></svg></button>
+        <button class="small-btn add icon-only-btn" title="Add Row" aria-label="Add Row" onclick="addRow()"><i data-lucide="plus" aria-hidden="true"></i></button>
+        <button class="small-btn del icon-only-btn" title="Delete Row" aria-label="Delete Row" onclick="delRow(this)"><i data-lucide="trash-2" aria-hidden="true"></i></button>
       </div>
     </td>`;
   body.appendChild(tr);

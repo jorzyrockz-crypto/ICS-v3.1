@@ -6,7 +6,7 @@ ${renderWelcomeBanner('Archives')}
   <div class="ics-card-head"><span class="card-title">Archived Disposal Items <span class="card-badge records">ARCHIVE</span></span></div>
   <p class="card-subtext">Items archived from Action Center with disposal approval metadata.${scope}</p>
   <div class="records-table-wrap">
-    <table class="ics-table">
+    <table class="ics-table archives-main-table">
       <colgroup>
         <col style="width:3%">
         <col style="width:10%">

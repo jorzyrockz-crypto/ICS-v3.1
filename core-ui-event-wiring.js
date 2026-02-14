@@ -1,7 +1,20 @@
 function initializeUIEventWiring(){
   searchBtn.addEventListener('click', () => openSearchOverlay());
   dataManagerBtn?.addEventListener('click', () => openDataManagerModal('hub'));
+  mobileProfileBtn?.addEventListener('click', () => openProfileModal());
+  bottomNewIcsBtn?.addEventListener('click', () => {
+    if (!hasRoleCapability('edit_records')){
+      notify('error', `Access denied. ${normalizeRoleLabel(currentUser?.role)} role cannot open ICS editor.`);
+      return;
+    }
+    if (activeViewKey() !== 'Manage Inventory') goToView('Manage Inventory');
+    setTimeout(() => toggleSheet(), 0);
+  });
+  sidebarToggleBtn?.addEventListener('click', () => toggleSidebarCollapsed());
   sidebarProfileBtn?.addEventListener('click', () => openProfileModal());
+  sidebarUserAvatar?.addEventListener('click', () => {
+    if (document.body.classList.contains('sidebar-collapsed')) openProfileModal();
+  });
   sidebarSignOutIconBtn?.addEventListener('click', () => signOutSession());
   searchOverlay.addEventListener('click', (e) => {
     if (e.target === searchOverlay) closeSearchOverlay();
@@ -21,6 +34,9 @@ function initializeUIEventWiring(){
   document.getElementById('icsDetailsOverlay')?.addEventListener('click', (e) => {
     if (e.target?.id === 'icsDetailsOverlay') closeICSDetailsModal();
   });
+  document.getElementById('icsRecordHistoryOverlay')?.addEventListener('click', (e) => {
+    if (e.target?.id === 'icsRecordHistoryOverlay') closeICSRecordHistoryModal();
+  });
   document.getElementById('archivedHistoryOverlay')?.addEventListener('click', (e) => {
     if (e.target?.id === 'archivedHistoryOverlay') closeArchivedHistoryModal();
   });
@@ -38,6 +54,15 @@ function initializeUIEventWiring(){
   });
   document.getElementById('dataExportOverlay')?.addEventListener('click', (e) => {
     if (e.target?.id === 'dataExportOverlay') closeDataExportModal();
+  });
+  document.addEventListener('pointerdown', (e) => {
+    if (activeViewKey() !== 'Manage Inventory') return;
+    if (!sheet.classList.contains('show')) return;
+    if (typeof getOpenOverlayIds === 'function' && getOpenOverlayIds().length) return;
+    const target = e.target;
+    if (target?.closest?.('#sheet')) return;
+    if (target?.closest?.('.fab')) return;
+    closeSheet();
   });
   document.getElementById('dmExportYear')?.addEventListener('change', () => refreshDataManagerExportFilters());
   document.getElementById('dmExportMonth')?.addEventListener('change', () => updateDataManagerExportFilterHint());
@@ -79,5 +104,22 @@ function initializeUIEventWiring(){
       syncProfileThemePreview(targetTheme);
       applyThemeAccent(targetTheme);
     });
+  });
+  initializeModalScrollShadows();
+}
+
+function initializeModalScrollShadows(){
+  document.querySelectorAll('.actions-modal').forEach((modal) => {
+    const body = modal.querySelector('.modal-body');
+    const foot = modal.querySelector('.modal-foot');
+    if (!body || !foot) return;
+    const syncShadow = () => {
+      const isScrollable = body.scrollHeight > body.clientHeight + 1;
+      const showShadow = isScrollable && body.scrollTop > 2;
+      modal.classList.toggle('modal-body-scrolled', showShadow);
+    };
+    body.addEventListener('scroll', syncShadow, { passive: true });
+    window.addEventListener('resize', syncShadow);
+    requestAnimationFrame(syncShadow);
   });
 }

@@ -122,10 +122,12 @@ function closeSearchOverlay(){
 
 function findItemRef(icsNo, itemNo){
   const records = JSON.parse(localStorage.getItem('icsRecords') || '[]');
-  const rIdx = records.findIndex((r) => (r.icsNo || '') === icsNo);
+  const targetIcsKey = normalizeICSKey(icsNo || '');
+  const targetItemKey = normalizeICSKey(itemNo || '');
+  const rIdx = records.findIndex((r) => normalizeICSKey(r.icsNo || '') === targetIcsKey);
   if (rIdx === -1) return null;
   const items = records[rIdx].items || [];
-  const iIdx = items.findIndex((i) => (i.itemNo || '') === itemNo);
+  const iIdx = items.findIndex((i) => normalizeICSKey(i.itemNo || '') === targetItemKey);
   if (iIdx === -1) return null;
   return { records, rIdx, iIdx };
 }
@@ -158,9 +160,22 @@ function renderRecordStatusPill(record){
   const type = (record?._statusMeta?.type || '').toString().toLowerCase();
   if (!['new', 'imported', 'updated'].includes(type)) return '';
   const title = escapeHTML(getRecordStatusMetaTitle(record));
+  const label = type === 'new' ? 'New' : (type === 'imported' ? 'Imported' : 'Updated');
   const integrity = verifyRecordLineage(record || {});
-  const warn = integrity.ok ? '' : `<span class="ics-status-dot updated" title="${escapeHTML(integrity.message)}" aria-label="${escapeHTML(integrity.message)}">!</span>`;
-  return `<span class="ics-status-dot ${type}" title="${title}" aria-label="${title}">i</span>${warn}`;
+  const warn = integrity.ok
+    ? ''
+    : `<span class="ics-status-chip danger" title="${escapeHTML(integrity.message)}" aria-label="${escapeHTML(integrity.message)}">Lineage issue</span>`;
+  return `<span class="ics-status-chip ${type}" title="${title}" aria-label="${title}">${label}</span>${warn}`;
+}
+
+function renderRecordStatusMini(record){
+  const type = (record?._statusMeta?.type || '').toString().toLowerCase();
+  if (!['new', 'imported', 'updated'].includes(type)) return '<span class="ics-status-mini muted">-</span>';
+  const label = type === 'new' ? 'New' : (type === 'imported' ? 'Imported' : 'Updated');
+  const title = escapeHTML(getRecordStatusMetaTitle(record));
+  const integrity = verifyRecordLineage(record || {});
+  const warnAttr = integrity.ok ? '' : ` data-warn="1"`;
+  return `<span class="ics-status-mini ${type}" title="${title}" aria-label="${title}"${warnAttr}><span class="dot" aria-hidden="true"></span>${label}</span>`;
 }
 
 function buildICSRecordFromArchive(icsNo){
@@ -211,11 +226,31 @@ function openICSDetailsModal(record, focusItemNo, recordIndex){
   const archivedItems = getArchivedItems().filter((a) => (a.source?.icsNo || '') === (record.icsNo || ''));
   const lineage = normalizeRecordLineage(record?._lineage || record?.lineage);
   const lineageCheck = verifyRecordLineage(record || {});
+  const shortToken = (value, max = 18) => {
+    const raw = (value || '').toString().trim();
+    if (!raw) return '-';
+    return raw.length > max ? `${raw.slice(0, max)}...` : raw;
+  };
   const lineageRows = (lineage?.versions || []).slice().reverse().slice(0, 8).map((entry) => {
     const parsedAt = new Date(entry.at || '');
     const at = Number.isFinite(parsedAt.getTime()) ? parsedAt.toLocaleString() : '-';
-    const summary = entry.summary ? ` | ${escapeHTML(entry.summary)}` : '';
-    return `<div>#${entry.version} ${escapeHTML(entry.action)} | ${escapeHTML(at)} | ${escapeHTML(entry.byProfileKey)} | ${escapeHTML(entry.deviceId)} | ${escapeHTML(entry.sessionId)}${summary}</div>`;
+    const actor = (entry.byProfileKey || '').toString().trim() || '-';
+    const device = (entry.deviceId || '').toString().trim() || '-';
+    const session = (entry.sessionId || '').toString().trim() || '-';
+    const summary = (entry.summary || '').toString().trim();
+    return `<div class="lineage-row">
+      <div class="lineage-row-main">
+        <span class="lineage-version">v${Number(entry.version) || 0}</span>
+        <span class="lineage-action">${escapeHTML(entry.action || '-')}</span>
+        <span class="lineage-time">${escapeHTML(at)}</span>
+      </div>
+      <div class="lineage-row-meta">
+        <span class="lineage-meta-chip" title="${escapeHTML(actor)}">Actor: ${escapeHTML(shortToken(actor))}</span>
+        <span class="lineage-meta-chip" title="${escapeHTML(device)}">Device: ${escapeHTML(shortToken(device))}</span>
+        <span class="lineage-meta-chip" title="${escapeHTML(session)}">Session: ${escapeHTML(shortToken(session))}</span>
+      </div>
+      ${summary ? `<div class="lineage-summary" title="${escapeHTML(summary)}">${escapeHTML(summary)}</div>` : ''}
+    </div>`;
   }).join('');
   const lineageSummary = lineage
     ? `Version ${lineage.currentVersion || 0} | Hash ${escapeHTML((lineage.currentHash || '').slice(0, 20) || '-')}`
@@ -224,96 +259,166 @@ function openICSDetailsModal(record, focusItemNo, recordIndex){
     ? `<span class="risk-badge ok">${escapeHTML(lineageCheck.message)}</span>`
     : `<span class="risk-badge danger">${escapeHTML(lineageCheck.message)}</span>`;
 
-  const itemRows = items.length ? items.map((it, idx) => {
-    const qty = escapeHTML(it.qtyText || it.qty || '');
-    const unit = escapeHTML(it.unit || '');
-    const unitCost = formatCurrencyValue(parseCurrencyValue(it.unitCost));
-    const total = formatCurrencyValue(parseCurrencyValue(it.total));
-    const eul = escapeHTML(it.eul ?? '');
-    const itemNo = (it.itemNo || '').toString();
-    const focusCls = focusItemNo && itemNo === focusItemNo ? 'detail-focus' : '';
-    const cls = classifyEULItem(record, it);
-    const canTarget = itemNo.trim() !== '';
-    const eulStatusCell = cls.code === 'past' && canTarget
-      ? `<button class="ics-link-btn" onclick="openPastEULForItem('${escapeHTML(record.icsNo || '')}','${escapeHTML(itemNo)}')"><span class="${cls.cls}">${cls.status}</span></button>`
-      : cls.code === 'near' && canTarget
-        ? `<button class="ics-link-btn" onclick="openNearEULForItem('${escapeHTML(record.icsNo || '')}','${escapeHTML(itemNo)}')"><span class="${cls.cls}">${cls.status}</span></button>`
-        : `<span class="${cls.cls}">${cls.status}</span>`;
-    const inspLogs = Array.isArray(it.inspections) ? it.inspections : [];
-    const lastInsp = inspLogs.length ? inspLogs[inspLogs.length - 1] : null;
-    const inspLabel = lastInsp
-      ? (lastInsp.status === 'unserviceable'
-        ? '<span class="risk-badge danger">Unserviceable</span>'
-        : '<span class="risk-badge ok">Serviceable</span>')
-      : '<span class="card-subtext">Not inspected</span>';
-    return `<tr class="${focusCls}">
-      <td>${idx + 1}</td>
-      <td>${escapeHTML(it.desc || '')}</td>
-      <td>${escapeHTML(itemNo)}</td>
-      <td>${qty}</td>
-      <td>${unit}</td>
-      <td>${unitCost || '-'}</td>
-      <td>${total || '-'}</td>
-      <td>${eul}</td>
-      <td>${eulStatusCell}</td>
-      <td>${inspLabel}</td>
-    </tr>`;
-  }).join('') : '<tr><td colspan="10" class="empty-cell">No items found in this ICS record.</td></tr>';
-
-  const archivedRows = archivedItems.length ? archivedItems.map((a, idx) => `
+  const archivedRows = archivedItems.length ? archivedItems.map((a) => `
     <tr>
-      <td>${idx + 1}</td>
       <td>${escapeHTML((a.archivedAt || '').slice(0,10))}</td>
-      <td>${escapeHTML(a.item?.itemNo || '')}</td>
-      <td>${escapeHTML(a.item?.desc || '')}</td>
+      <td><span class="u-truncate u-mono" title="${escapeHTML(a.item?.itemNo || '')}">${escapeHTML(a.item?.itemNo || '')}</span></td>
+      <td><span class="u-truncate" title="${escapeHTML(a.item?.desc || '')}">${escapeHTML(a.item?.desc || '')}</span></td>
       <td>${escapeHTML(a.disposal?.status === 'approved' ? 'Approved' : 'Not Approved')}</td>
-      <td>${escapeHTML(a.disposal?.approvedBy || '-')}</td>
-      <td>${escapeHTML(a.disposal?.remarks || '-')}</td>
+      <td><span class="u-truncate" title="${escapeHTML(a.disposal?.approvedBy || '-')}">${escapeHTML(a.disposal?.approvedBy || '-')}</span></td>
     </tr>
-  `).join('') : '<tr><td colspan="7" class="empty-cell">No archived items for this ICS.</td></tr>';
+  `).join('') : '<tr><td colspan="5" class="empty-cell">No archived items for this ICS.</td></tr>';
 
-  title.innerHTML = `ICS Details - <button class="ics-link-btn" onclick="icsDetailsEditFromTitle()">${escapeHTML(record.icsNo || 'N/A')}</button>`;
+  const safeIcsNo = escapeHTML(record.icsNo || 'N/A');
+  const itemCount = items.length;
+  const inspectedCount = items.filter((it) => Array.isArray(it?.inspections) && it.inspections.length).length;
+  const archivedCount = archivedItems.length;
+  const totalValue = formatCurrencyValue(computeRecordMetrics(record).totalValue) || '0.00';
+  const latestEntry = (lineage?.versions || []).slice().reverse()[0] || null;
+  const latestAtRaw = latestEntry?.at ? new Date(latestEntry.at) : null;
+  const latestAt = latestAtRaw && Number.isFinite(latestAtRaw.getTime()) ? latestAtRaw.toLocaleString() : '-';
+  const latestActor = normalizeProfileKeyValue(latestEntry?.byProfileKey || '');
+  const latestSummary = latestEntry?.summary ? escapeHTML(latestEntry.summary) : '-';
+  const latestVersionLabel = `Latest ${lineage?.versions?.length ? 1 : 0}`;
+  const showAdvancedAudit = getCurrentRoleKey() === 'admin';
+  const icon = (name) => `<span class="icsd-title-icon" aria-hidden="true"><i data-lucide="${name}" aria-hidden="true"></i></span>`;
+  const iconSummary = icon('layout-list');
+  const iconArchived = icon('archive');
+  const iconActivity = icon('activity');
+  const iconItems = icon('package');
+  const iconHistory = icon('history');
+
+  title.textContent = 'ICS Details';
   body.innerHTML = `
-    <div class="ics-details-content">
-    <div class="detail-grid">
-      <div class="detail-item"><div class="k">Entity</div><div class="v">${escapeHTML(record.entity || '-')}</div></div>
-      <div class="detail-item"><div class="k">Fund Cluster</div><div class="v">${escapeHTML(record.fund || '-')}</div></div>
-      <div class="detail-item"><div class="k">Issued Date</div><div class="v">${escapeHTML(record.issuedDate || '-')}</div></div>
-      <div class="detail-item"><div class="k">Accountable Person</div><div class="v">${escapeHTML(record.accountable || '-')}</div></div>
-      <div class="detail-item"><div class="k">Issued By</div><div class="v">${escapeHTML(issuedBy.name || '-')} (${escapeHTML(issuedBy.position || '-')})</div></div>
-      <div class="detail-item"><div class="k">Received By</div><div class="v">${escapeHTML(receivedBy.name || '-')} (${escapeHTML(receivedBy.position || '-')})</div></div>
-      <div class="detail-item"><div class="k">Total Items</div><div class="v">${items.length}</div></div>
-      <div class="detail-item"><div class="k">Total Value</div><div class="v">${formatCurrencyValue(computeRecordMetrics(record).totalValue) || '0.00'}</div></div>
-      <div class="detail-item"><div class="k">Lineage Integrity</div><div class="v">${lineageIntegrity}</div></div>
-      <div class="detail-item"><div class="k">Lineage Summary</div><div class="v">${lineageSummary}</div></div>
-    </div>
+    <div class="icsd-shell">
+      <section class="icsd-head">
+        <div class="icsd-head-left">
+          <div class="icsd-head-title-row">
+            <button class="ics-link-btn icsd-ics-btn" onclick="icsDetailsEditFromTitle()">${safeIcsNo}</button>
+            ${lineageIntegrity}
+          </div>
+          <div class="icsd-head-meta">
+            <span>${escapeHTML(record.entity || '-')}</span>
+            <span class="icsd-dot-sep">|</span>
+            <span>${escapeHTML(record.fund || '-')}</span>
+          </div>
+        </div>
+      </section>
 
-    <div class="detail-section-title">Record Lineage Timeline (Latest 8)</div>
-    <div class="profile-readonly">${lineageRows || 'No lineage versions available.'}</div>
+      <div class="icsd-grid">
+        <div class="icsd-col">
+          <section class="icsd-card">
+            <div class="icsd-card-title">${iconSummary}Summary</div>
+            <div class="icsd-summary-grid">
+              <div class="icsd-kv"><div class="k">Issued Date</div><div class="v">${escapeHTML(record.issuedDate || '-')}</div></div>
+              <div class="icsd-kv"><div class="k">Total Value</div><div class="v">${totalValue}</div></div>
+              <div class="icsd-kv"><div class="k">Issued By</div><div class="v u-truncate" title="${escapeHTML(issuedBy.name || '-')}">${escapeHTML(issuedBy.name || '-')}</div></div>
+              <div class="icsd-kv"><div class="k">Received By</div><div class="v u-truncate" title="${escapeHTML(receivedBy.name || '-')}">${escapeHTML(receivedBy.name || '-')}</div></div>
+              <div class="icsd-kv"><div class="k">Accountable Person</div><div class="v u-truncate" title="${escapeHTML(record.accountable || '-')}">${escapeHTML(record.accountable || '-')}</div></div>
+              <div class="icsd-kv"><div class="k">Total Items</div><div class="v">${itemCount}</div></div>
+              <div class="icsd-kv icsd-kv-full">
+                <div class="k">${showAdvancedAudit ? 'Lineage' : 'Integrity'}</div>
+                <div class="v u-truncate" title="${escapeHTML(showAdvancedAudit ? lineageSummary : lineageCheck.message)}">${escapeHTML(showAdvancedAudit ? lineageSummary : lineageCheck.message)}</div>
+              </div>
+            </div>
+          </section>
 
-    <div class="detail-section-title">Items (ICS Records + EUL Context)</div>
-    <div class="detail-table-wrap">
-      <table class="detail-table">
-        <thead>
-          <tr>
-            <th>#</th><th>Description</th><th>Item No.</th><th>Qty</th><th>Unit</th><th>Unit Cost</th><th>Total</th><th>EUL</th><th>EUL Status</th><th>Inspection</th>
-          </tr>
-        </thead>
-        <tbody>${itemRows}</tbody>
-      </table>
-    </div>
+        </div>
 
-    <div class="detail-section-title">Archived Items (Archives)</div>
-    <div class="detail-table-wrap">
-      <table class="detail-table">
-        <thead>
-          <tr>
-            <th>#</th><th>Archived At</th><th>Item No.</th><th>Description</th><th>Approval</th><th>Approved By</th><th>Remarks</th>
-          </tr>
-        </thead>
-        <tbody>${archivedRows}</tbody>
-      </table>
-    </div>
+        <div class="icsd-col">
+          <section class="icsd-card">
+            <div class="icsd-row-between">
+              <div class="icsd-card-title">${iconArchived}Archived items</div>
+              <span class="icsd-mini-pill">${archivedCount}</span>
+            </div>
+            ${archivedCount ? `
+              <div class="detail-table-wrap">
+                <table class="detail-table ics-archived-table">
+                  <thead>
+                    <tr><th>Archived At</th><th>Item No.</th><th>Description</th><th>Approval</th><th>Approved By</th></tr>
+                  </thead>
+                  <tbody>${archivedRows}</tbody>
+                </table>
+              </div>
+            ` : '<div class="icsd-empty-box">No archived items for this ICS.</div>'}
+          </section>
+
+          <section class="icsd-card">
+            <div class="icsd-row-between">
+              <div class="icsd-card-title">${iconActivity}Record activity</div>
+              <span class="icsd-mini-pill">${latestVersionLabel}</span>
+            </div>
+            <div class="icsd-activity-card">
+              ${latestEntry ? `
+                <div class="icsd-activity-main">
+                  <span class="lineage-version">v${Number(latestEntry.version) || 0}</span>
+                  <strong>${escapeHTML(latestEntry.action || 'record update')}</strong>
+                </div>
+                <div class="icsd-activity-meta">${escapeHTML(latestAt)}${showAdvancedAudit && latestActor ? ` | ${escapeHTML(latestActor)}` : ''}</div>
+                <div class="icsd-activity-summary">${showAdvancedAudit ? latestSummary : escapeHTML('Record updated')}</div>
+              ` : '<div class="lineage-empty">No activity yet for this record.</div>'}
+            </div>
+            <button class="small-btn" onclick="openICSRecordHistoryModal()">${iconHistory}View record history</button>
+          </section>
+        </div>
+      </div>
+
+      <section class="icsd-card icsd-items-full">
+        <div class="icsd-row-between">
+          <div class="icsd-card-title">${iconItems}Items</div>
+          <span class="icsd-mini-pill">${itemCount} item(s)</span>
+        </div>
+        <div class="detail-table-wrap">
+          <table class="detail-table ics-items-table">
+            <thead>
+              <tr>
+                <th>Description</th><th>Item No.</th><th>Qty</th><th>Unit</th><th>Unit Cost</th><th>Total</th><th>EUL</th><th>EUL Status</th><th>Inspection</th>
+              </tr>
+            </thead>
+            <tbody>${itemCount ? items.map((it) => {
+              const qty = escapeHTML(it.qtyText || it.qty || '');
+              const unit = escapeHTML(it.unit || '');
+              const unitCost = formatCurrencyValue(parseCurrencyValue(it.unitCost));
+              const total = formatCurrencyValue(parseCurrencyValue(it.total));
+              const eul = escapeHTML(it.eul ?? '');
+              const itemNo = (it.itemNo || '').toString();
+              const cls = classifyEULItem(record, it);
+              const canTarget = itemNo.trim() !== '';
+              const eulStatusCell = cls.code === 'past' && canTarget
+                ? `<button class="ics-link-btn" onclick="openPastEULForItem('${escapeHTML(record.icsNo || '')}','${escapeHTML(itemNo)}')"><span class="${cls.cls}">${cls.status}</span></button>`
+                : cls.code === 'near' && canTarget
+                  ? `<button class="ics-link-btn" onclick="openNearEULForItem('${escapeHTML(record.icsNo || '')}','${escapeHTML(itemNo)}')"><span class="${cls.cls}">${cls.status}</span></button>`
+                  : `<span class="${cls.cls}">${cls.status}</span>`;
+              const inspLogs = Array.isArray(it.inspections) ? it.inspections : [];
+              const lastInsp = inspLogs.length ? inspLogs[inspLogs.length - 1] : null;
+              const inspLabel = lastInsp
+                ? (lastInsp.status === 'unserviceable'
+                  ? '<span class="risk-badge danger">Unserviceable</span>'
+                  : '<span class="risk-badge ok">Serviceable</span>')
+                : '<span class="card-subtext">Not inspected</span>';
+              return `<tr>
+                <td><span class="u-truncate" title="${escapeHTML(it.desc || '')}">${escapeHTML(it.desc || '')}</span></td>
+                <td><span class="u-truncate u-mono" title="${escapeHTML(itemNo)}">${escapeHTML(itemNo)}</span></td>
+                <td>${qty}</td>
+                <td>${unit}</td>
+                <td>${unitCost || '-'}</td>
+                <td>${total || '-'}</td>
+                <td>${eul}</td>
+                <td>${eulStatusCell}</td>
+                <td>${inspLabel}</td>
+              </tr>`;
+            }).join('') : '<tr><td colspan="9" class="empty-cell">No items found in this ICS record.</td></tr>'}</tbody>
+          </table>
+        </div>
+        <div class="icsd-table-meta">
+          <span>Showing ${itemCount} item(s)</span>
+          <div class="icsd-meta-pills">
+            <span class="icsd-mini-pill">${inspectedCount} inspected</span>
+            <span class="icsd-mini-pill">Total: ${totalValue}</span>
+          </div>
+        </div>
+      </section>
+
     </div>
   `;
   overlay.classList.add('show');
@@ -323,6 +428,47 @@ function closeICSDetailsModal(){
   const overlay = document.getElementById('icsDetailsOverlay');
   if (overlay) overlay.classList.remove('show');
   currentICSDetailsContext = { recordIndex: null, icsNo: '', hasLiveRecord: false };
+}
+
+function getCurrentICSDetailsRecordContext(){
+  if (!currentICSDetailsContext.hasLiveRecord || currentICSDetailsContext.recordIndex === null) return null;
+  const records = JSON.parse(localStorage.getItem('icsRecords') || '[]');
+  const idx = currentICSDetailsContext.recordIndex;
+  const record = records[idx];
+  if (!record) return null;
+  return { records, idx, record };
+}
+
+function openICSRecordHistoryModal(){
+  const overlay = document.getElementById('icsRecordHistoryOverlay');
+  const title = document.getElementById('icsRecordHistoryTitle');
+  const body = document.getElementById('icsRecordHistoryBody');
+  if (!overlay || !title || !body) return;
+  const ctx = getCurrentICSDetailsRecordContext();
+  if (!ctx) return notify('error', 'Record history is available only for active ICS records.');
+  const record = ctx.record || {};
+  const lineage = normalizeRecordLineage(record?._lineage || record?.lineage);
+  const rows = (lineage?.versions || []).slice().reverse().map((entry) => {
+    const parsedAt = new Date(entry.at || '');
+    const at = Number.isFinite(parsedAt.getTime()) ? parsedAt.toLocaleString() : '-';
+    const actor = normalizeProfileKeyValue(entry.byProfileKey || '') || 'unknown';
+    return `<div class="lineage-row">
+      <div class="lineage-row-main">
+        <span class="lineage-version">v${Number(entry.version) || 0}</span>
+        <span class="lineage-action">${escapeHTML(entry.action || '-')}</span>
+        <span class="lineage-time">${escapeHTML(at)}</span>
+      </div>
+      <div class="lineage-summary">By ${escapeHTML(actor)}</div>
+    </div>`;
+  }).join('');
+  title.textContent = `Record history - ${record.icsNo || 'ICS'}`;
+  body.innerHTML = `<div class="profile-readonly">${rows || '<div class="lineage-empty">No record history available.</div>'}</div>`;
+  overlay.classList.add('show');
+}
+
+function closeICSRecordHistoryModal(){
+  const overlay = document.getElementById('icsRecordHistoryOverlay');
+  if (overlay) overlay.classList.remove('show');
 }
 
 function icsDetailsEditFromTitle(){
@@ -377,20 +523,29 @@ function openArchivedItemHistory(index){
   const disposalStatus = disp.status === 'approved' ? 'Approved' : (disp.status === 'not_approved' ? 'Not Approved' : 'Pending');
   const statusClass = disp.status === 'approved' ? 'approved' : 'pending';
   const refNo = textOrDash(disp.referenceNo || entry.referenceNo || '');
+  const icon = (name) => `<span class="archived-inline-icon" aria-hidden="true"><i data-lucide="${name}" aria-hidden="true"></i></span>`;
+  const iconArchive = icon('archive');
+  const iconAsset = icon('package');
+  const iconInfo = icon('info');
+  const iconBox = icon('box');
+  const iconQty = icon('bar-chart-2');
+  const iconNote = icon('file-text');
+  const iconLogs = icon('list');
+  const iconExport = icon('download');
 
-  const sideRows = [
+  const assetRows = [
     { label: 'ICS Number', value: textOrDash(src.icsNo) },
     { label: 'Entity', value: textOrDash(src.entity) },
     { label: 'Fund Cluster', value: textOrDash(src.fund) },
     { label: 'Issued Date', value: textOrDash(src.issuedDate) },
     { label: 'Unit Cost', value: moneyOrDash(it.unitCost) },
-    { label: 'Total Value', value: moneyOrDash(it.total) }
-  ].map((r) => `<div class="archived-side-row"><div class="k">${escapeHTML(r.label)}</div><div class="v">${escapeHTML(r.value)}</div></div>`).join('');
-
-  const archivalRows = [
+    { label: 'Total Value', value: moneyOrDash(it.total) },
     { label: 'Archived At', value: textOrDash(archivedAt) },
     { label: 'Approved By', value: textOrDash(disp.approvedBy) }
-  ].map((r) => `<div class="archived-side-row"><div class="k">${escapeHTML(r.label)}</div><div class="v">${escapeHTML(r.value)}</div></div>`).join('');
+  ];
+  const renderKV = (rows) => rows.map((r) => (
+    `<div class="icsd-kv"><div class="k">${escapeHTML(r.label)}</div><div class="v">${escapeHTML(r.value)}</div></div>`
+  )).join('');
 
   const qtyUnit = `${textOrDash(it.qtyText || it.qty)} ${((it.unit || '').toString().trim())}`.trim();
 
@@ -402,59 +557,58 @@ function openArchivedItemHistory(index){
     const dateDisplay = toNiceDate(log.date || recordedAt);
     const timeDisplay = toNiceTime(recordedAt);
     const reason = textOrDash(log.reason);
+    const statusDot = statusClassName === 'serviceable'
+      ? icon('check')
+      : icon('alert-circle');
     return `<tr>
       <td>${escapeHTML(dateDisplay)}</td>
-      <td><span class="archive-log-pill ${statusClassName}">${escapeHTML(statusLabel)}</span></td>
+      <td><span class="archive-log-pill ${statusClassName}">${statusDot}${escapeHTML(statusLabel)}</span></td>
       <td>${escapeHTML(reason)}</td>
       <td>${escapeHTML(timeDisplay)}</td>
     </tr>`;
   }).join('') : '<tr><td colspan="4" class="empty-cell">No inspection history recorded.</td></tr>';
 
   title.innerHTML = `
-    <span class="archived-title-main">Archived: ${escapeHTML(textOrDash(it.itemNo || 'Item'))}</span>
+    <span class="archived-title-main">${iconArchive}Archived: ${escapeHTML(textOrDash(it.itemNo || 'Item'))}</span>
     <span class="archived-title-badge ${statusClass}">${escapeHTML(disposalStatus.toUpperCase())}</span>
   `;
 
   body.innerHTML = `
-    <div class="archived-sheet">
-      <div class="archived-sheet-main">
-        <aside class="archived-sheet-side">
-          <div class="archived-side-section-title">Asset Details</div>
-          ${sideRows}
-          <div class="archived-side-section-title">Archival Info</div>
-          ${archivalRows}
-        </aside>
-        <section class="archived-sheet-right">
-          <div class="archived-top-cards">
-            <div class="archived-top-card">
-              <div class="k">Item Description</div>
-              <div class="v">${escapeHTML(textOrDash(it.desc))}</div>
+    <div class="icsd-shell archived-icsd-shell">
+      <div class="icsd-grid archived-icsd-grid">
+        <div class="icsd-col">
+          <section class="icsd-card">
+            <div class="icsd-card-title">${iconAsset}Asset & Archival Summary</div>
+            <div class="icsd-summary-grid">
+              ${renderKV(assetRows)}
             </div>
-            <div class="archived-top-card">
-              <div class="k">Quantity</div>
-              <div class="v">${escapeHTML(textOrDash(qtyUnit))}</div>
+          </section>
+        </div>
+        <div class="icsd-col">
+          <section class="icsd-card">
+            <div class="icsd-card-title">${iconBox}Item Details</div>
+            <div class="icsd-summary-grid">
+              <div class="icsd-kv icsd-kv-full"><div class="k">Item Description</div><div class="v">${escapeHTML(textOrDash(it.desc))}</div></div>
+              <div class="icsd-kv"><div class="k">Quantity</div><div class="v">${escapeHTML(textOrDash(qtyUnit))}</div></div>
+              <div class="icsd-kv"><div class="k">Remarks</div><div class="v">${escapeHTML(textOrDash(disp.remarks))}</div></div>
             </div>
-            <div class="archived-top-card">
-              <div class="k">Remarks</div>
-              <div class="v archived-remarks">${escapeHTML(textOrDash(disp.remarks))}</div>
-            </div>
-          </div>
-          <div class="archived-logs-card">
-            <div class="archived-logs-title">Inspection Logs</div>
-            <div class="archived-logs-wrap">
-              <table class="archived-log-table">
+          </section>
+          <section class="icsd-card">
+            <div class="icsd-card-title">${iconLogs}Inspection Logs</div>
+            <div class="detail-table-wrap">
+              <table class="detail-table archived-log-table archived-icsd-log-table">
                 <thead>
                   <tr><th>Date</th><th>Status</th><th>Reason</th><th>Time</th></tr>
                 </thead>
                 <tbody>${inspRows}</tbody>
               </table>
             </div>
-          </div>
-        </section>
+          </section>
+        </div>
       </div>
       <div class="archived-sheet-foot">
         <div class="archived-foot-meta">Total Logs: ${inspections.length} <span class="archived-foot-ref">Ref: ${escapeHTML(refNo)}</span></div>
-        <button class="archived-export-btn" onclick="exportArchivedHistoryReport()">Export Archive Report</button>
+        <button class="archived-export-btn" onclick="exportArchivedHistoryReport()">${iconExport}Export Archive Report</button>
       </div>
     </div>
   `;

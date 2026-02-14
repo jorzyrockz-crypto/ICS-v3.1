@@ -84,6 +84,7 @@ function getOpenOverlayIds(){
     'inspectionHistoryOverlay',
     'profileOverlay',
     'loginOverlay',
+    'icsRecordHistoryOverlay',
     'archivedHistoryOverlay',
     'icsDetailsOverlay',
     'searchOverlay'
@@ -123,6 +124,7 @@ function handleOverlayKeydown(e){
     else if (top === 'inspectionOverlay') closeInspectionModal();
     else if (top === 'inspectionHistoryOverlay') closeInspectionHistory();
     else if (top === 'profileOverlay') closeProfileModal();
+    else if (top === 'icsRecordHistoryOverlay') closeICSRecordHistoryModal();
     else if (top === 'archivedHistoryOverlay') closeArchivedHistoryModal();
     else if (top === 'icsDetailsOverlay') closeICSDetailsModal();
     else if (top === 'searchOverlay') closeSearchOverlay();
@@ -270,6 +272,11 @@ function initializeKeyboardRouting(){
     const typing = isTypingContext(e.target);
 
     if (handleOverlayKeydown(e)) return;
+    if (e.key === 'Escape' && view === 'Manage Inventory' && sheet.classList.contains('show')){
+      e.preventDefault();
+      closeSheet();
+      return;
+    }
     if (handleFloatingFormEnter(e)) return;
     if (handleStageItemsKeyboard(e)) return;
 
@@ -323,7 +330,6 @@ function initializeKeyboardRouting(){
     if (keymapHas('toggleNotifications', combo)){
       e.preventDefault();
       notifPanel.classList.toggle('show');
-      if (notifPanel.classList.contains('show')) markNotificationsRead();
       return;
     }
     if (keymapHas('batchWmr', combo) && view === 'Action Center'){

@@ -1,10 +1,10 @@
 const PROFILE_AVATAR_KEYS = ['initials', 'person', 'briefcase', 'school', 'shield', 'star'];
 const PROFILE_AVATAR_SVGS = {
-  person: '<svg class="profile-avatar-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 12a5 5 0 1 0-5-5 5 5 0 0 0 5 5zm0 2c-4.4 0-8 2-8 4.5V21h16v-2.5C20 16 16.4 14 12 14z"/></svg>',
-  briefcase: '<svg class="profile-avatar-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4h6a2 2 0 0 1 2 2v2h3a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h3V6a2 2 0 0 1 2-2zm0 4h6V6H9v2zm-5 4v6h16v-6h-6v2h-4v-2H4z"/></svg>',
-  school: '<svg class="profile-avatar-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 2 8l10 5 8-4v6h2V8L12 3zm-6 9v6h12v-6l-6 3-6-3zm3 1.5 3 1.5 3-1.5V17H9v-3.5z"/></svg>',
-  shield: '<svg class="profile-avatar-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 4 5v6c0 5.3 3.4 9.9 8 11 4.6-1.1 8-5.7 8-11V5l-8-3zm0 2.2 6 2.2V11c0 4.2-2.5 7.9-6 9-3.5-1.1-6-4.8-6-9V6.4l6-2.2z"/></svg>',
-  star: '<svg class="profile-avatar-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 2 3.1 6.3 6.9 1-5 4.9 1.2 6.9L12 17.8 5.8 21.1 7 14.2 2 9.3l6.9-1L12 2z"/></svg>'
+  person: '<i class="profile-avatar-icon" data-lucide="user" aria-hidden="true"></i>',
+  briefcase: '<i class="profile-avatar-icon" data-lucide="briefcase" aria-hidden="true"></i>',
+  school: '<i class="profile-avatar-icon" data-lucide="school" aria-hidden="true"></i>',
+  shield: '<i class="profile-avatar-icon" data-lucide="shield" aria-hidden="true"></i>',
+  star: '<i class="profile-avatar-icon" data-lucide="star" aria-hidden="true"></i>'
 };
 
 function createDefaultUser(){
