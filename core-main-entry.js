@@ -417,5 +417,6 @@ initializeKeyboardRouting();
 registerPWAServiceWorker();
 updateInstallAppButtonState();
 bootAppWithUserPreferences();
+announceReleaseNotesIfNeeded();
 
 addBtn.addEventListener('click', saveICSFromForm);

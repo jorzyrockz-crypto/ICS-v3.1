@@ -26,6 +26,60 @@ function bootAppWithUserPreferences(){
   openLoginModal(true);
 }
 
+const LAST_SEEN_APP_VERSION_STORAGE_KEY = 'icsLastSeenAppVersion';
+const RELEASE_NOTES_BY_VERSION = {
+  '3.3': [
+    'New responsive mobile and tablet navigation with a centered New ICS action.',
+    'Notification Center upgraded with filters, grouped feed, and bulk actions.',
+    'ICS and Archive Details layouts refreshed for cleaner readability.',
+    'ICS records table improved with dedicated status column and compact markers.'
+  ],
+  '3.2': [
+    'Lucide icon standardization completed across the app with local runtime assets.',
+    'Data Hub modal redesigned into card-based layout.',
+    'Action Center modal reliability fixes for Inspection History and Unserviceable flow.',
+    'Desktop sidebar now supports persisted collapse mode.'
+  ]
+};
+
+function getReleaseNotesForVersion(version){
+  const key = String(version || '').trim();
+  if (!key) return [];
+  return Array.isArray(RELEASE_NOTES_BY_VERSION[key]) ? RELEASE_NOTES_BY_VERSION[key] : [];
+}
+
+async function getRuntimeAppVersion(){
+  const fallbackVersion = String(APP_UI_VERSION_FALLBACK || '').trim();
+  try {
+    const manifestLink = document.querySelector('link[rel="manifest"]');
+    const manifestHref = manifestLink?.getAttribute('href') || './manifest.webmanifest';
+    const response = await fetch(manifestHref, { cache: 'no-store' });
+    if (!response.ok) return fallbackVersion;
+    const manifest = await response.json();
+    const manifestVersion = String(manifest?.version || '').trim();
+    return manifestVersion || fallbackVersion;
+  } catch (_err){
+    return fallbackVersion;
+  }
+}
+
+async function announceReleaseNotesIfNeeded(){
+  const version = await getRuntimeAppVersion();
+  if (!version) return;
+  const lastSeenVersion = String(localStorage.getItem(LAST_SEEN_APP_VERSION_STORAGE_KEY) || '').trim();
+  if (lastSeenVersion === version) return;
+
+  const notes = getReleaseNotesForVersion(version);
+  const fallbackNote = ['General quality, reliability, and UX improvements.'];
+  const lines = (notes.length ? notes : fallbackNote)
+    .map((line, idx) => `${idx + 1}. ${line}`)
+    .join('\n');
+
+  showModal(`What\'s New in v${version}`, lines);
+  notify('info', `What\'s New v${version}: ${(notes.length ? notes : fallbackNote).join(' | ')}`);
+  localStorage.setItem(LAST_SEEN_APP_VERSION_STORAGE_KEY, version);
+}
+
 function isAppRunningStandalone(){
   return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
 }
@@ -74,6 +128,12 @@ async function installPWAApp(){
 function registerPWAServiceWorker(){
   if (!('serviceWorker' in navigator)) return;
   if (!(location.protocol === 'https:' || location.hostname === 'localhost')) return;
+  let isRefreshingForUpdate = false;
+
+  function requestWorkerActivation(worker){
+    if (!worker) return;
+    worker.postMessage({ type: 'SKIP_WAITING' });
+  }
 
   window.addEventListener('beforeinstallprompt', (event) => {
     event.preventDefault();
@@ -91,15 +151,23 @@ function registerPWAServiceWorker(){
   window.addEventListener('load', async () => {
     try {
       const registration = await navigator.serviceWorker.register('./sw.js');
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        if (isRefreshingForUpdate) return;
+        isRefreshingForUpdate = true;
+        notify('info', 'Applying latest app update...');
+        window.location.reload();
+      });
       if (registration.waiting){
-        notify('info', 'An app update is ready. Reload to apply the latest version.');
+        notify('info', 'App update found. Applying now...');
+        requestWorkerActivation(registration.waiting);
       }
       registration.addEventListener('updatefound', () => {
         const nextWorker = registration.installing;
         if (!nextWorker) return;
         nextWorker.addEventListener('statechange', () => {
           if (nextWorker.state === 'installed' && navigator.serviceWorker.controller){
-            notify('info', 'App update downloaded. Reload to apply.');
+            notify('info', 'App update downloaded. Applying now...');
+            requestWorkerActivation(nextWorker);
           }
         });
       });
