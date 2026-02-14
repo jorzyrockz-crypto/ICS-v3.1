@@ -160,14 +160,135 @@ async function installPWAApp(){
 }
 
 function registerPWAServiceWorker(){
+  window.checkForPWAUpdateManual = function(){
+    showModal('App Update', 'Manual update check is unavailable in this browser context.');
+  };
   if (!('serviceWorker' in navigator)) return;
   if (!(location.protocol === 'https:' || location.hostname === 'localhost')) return;
-  let isRefreshingForUpdate = false;
+  let manualUpdateRequested = false;
+  let pwaRegistration = null;
+  let pendingUpdateWorker = null;
 
   function requestWorkerActivation(worker){
     if (!worker) return;
     worker.postMessage({ type: 'SKIP_WAITING' });
   }
+
+  function updateAppUpdateButtonState(){
+    if (!updateAppBtn) return;
+    if (!('serviceWorker' in navigator) || !(location.protocol === 'https:' || location.hostname === 'localhost')){
+      updateAppBtn.disabled = true;
+      updateAppBtn.textContent = 'Update Unavailable';
+      updateAppBtn.title = 'PWA update checks require HTTPS or localhost.';
+      return;
+    }
+    if (pendingUpdateWorker){
+      updateAppBtn.disabled = false;
+      updateAppBtn.textContent = 'Apply Update';
+      updateAppBtn.title = 'A new version is ready. Click to apply update.';
+      return;
+    }
+    updateAppBtn.disabled = false;
+    updateAppBtn.textContent = 'Check Update';
+    updateAppBtn.title = 'Check for latest app version.';
+  }
+
+  function waitForWorkerInstalled(worker){
+    return new Promise((resolve, reject) => {
+      if (!worker){
+        resolve(null);
+        return;
+      }
+      if (worker.state === 'installed'){
+        resolve('installed');
+        return;
+      }
+      if (worker.state === 'redundant'){
+        resolve('redundant');
+        return;
+      }
+      const onState = () => {
+        if (worker.state === 'installed'){
+          worker.removeEventListener('statechange', onState);
+          resolve('installed');
+        } else if (worker.state === 'redundant'){
+          worker.removeEventListener('statechange', onState);
+          resolve('redundant');
+        }
+      };
+      worker.addEventListener('statechange', onState);
+      setTimeout(() => {
+        worker.removeEventListener('statechange', onState);
+        reject(new Error('Update download timed out.'));
+      }, 30000);
+    });
+  }
+
+  function promptApplyPendingUpdate(){
+    const readyWorker = pendingUpdateWorker || pwaRegistration?.waiting || null;
+    if (!readyWorker){
+      showModal('App Update', 'No pending update found. Click Check Update to scan again.');
+      return;
+    }
+    showConfirm(
+      'App Update Ready',
+      'A new version has been downloaded.\nApply update now?\n\nAfter apply, close and open the app again.',
+      () => {
+        manualUpdateRequested = true;
+        showModal('Applying Update', 'Applying update now...\nPlease wait.');
+        requestWorkerActivation(readyWorker);
+      },
+      'Apply Update'
+    );
+  }
+
+  async function checkForPWAUpdateManual(){
+    if (!('serviceWorker' in navigator) || !(location.protocol === 'https:' || location.hostname === 'localhost')){
+      showModal('App Update', 'Manual update check is unavailable in this browser context.');
+      return;
+    }
+    if (pendingUpdateWorker){
+      promptApplyPendingUpdate();
+      return;
+    }
+    updateAppBtn && (updateAppBtn.disabled = true);
+    showModal('App Update', 'Checking for updates...\nPlease wait.');
+    try {
+      const registration = pwaRegistration || await navigator.serviceWorker.getRegistration('./');
+      if (!registration){
+        showModal('App Update', 'Update service is not ready yet.\nReload once, then try again.');
+        return;
+      }
+      pwaRegistration = registration;
+      await pwaRegistration.update();
+      if (pwaRegistration.waiting){
+        pendingUpdateWorker = pwaRegistration.waiting;
+        updateAppUpdateButtonState();
+        showModal('App Update', 'Update downloaded and ready to apply.');
+        promptApplyPendingUpdate();
+        return;
+      }
+      if (pwaRegistration.installing){
+        showModal('App Update', 'Update found. Downloading package...\nPlease wait.');
+        const state = await waitForWorkerInstalled(pwaRegistration.installing);
+        if (state === 'installed' && pwaRegistration.waiting){
+          pendingUpdateWorker = pwaRegistration.waiting;
+          updateAppUpdateButtonState();
+          showModal('App Update', 'Update downloaded and ready to apply.');
+          promptApplyPendingUpdate();
+          return;
+        }
+      }
+      showModal('App Update', 'You already have the latest app version.');
+    } catch (err){
+      console.warn('Manual update check failed:', err);
+      showModal('App Update', 'Unable to check for updates right now.\nPlease try again.');
+    } finally {
+      updateAppUpdateButtonState();
+    }
+  }
+
+  window.checkForPWAUpdateManual = checkForPWAUpdateManual;
 
   window.addEventListener('beforeinstallprompt', (event) => {
     event.preventDefault();
@@ -184,30 +305,40 @@ function registerPWAServiceWorker(){
 
   window.addEventListener('load', async () => {
     try {
-      const registration = await navigator.serviceWorker.register('./sw.js');
+      const registration = await navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' });
+      pwaRegistration = registration;
+      await registration.update();
       navigator.serviceWorker.addEventListener('controllerchange', () => {
-        if (isRefreshingForUpdate) return;
-        isRefreshingForUpdate = true;
-        notify('info', 'Applying latest app update...');
-        window.location.reload();
+        pendingUpdateWorker = null;
+        updateAppUpdateButtonState();
+        if (manualUpdateRequested){
+          manualUpdateRequested = false;
+          notify('success', 'App update applied. Close and open the app again to start the latest version.');
+          showModal('Update Applied', 'Update has been applied successfully.\nPlease close and open the app again to start the latest version.');
+          return;
+        }
+        notify('info', 'A new app version became active.');
       });
       if (registration.waiting){
-        notify('info', 'App update found. Applying now...');
-        requestWorkerActivation(registration.waiting);
+        pendingUpdateWorker = registration.waiting;
+        notify('info', 'App update is ready. Click "Apply Update" in the sidebar.');
+        updateAppUpdateButtonState();
       }
       registration.addEventListener('updatefound', () => {
         const nextWorker = registration.installing;
         if (!nextWorker) return;
         nextWorker.addEventListener('statechange', () => {
           if (nextWorker.state === 'installed' && navigator.serviceWorker.controller){
-            notify('info', 'App update downloaded. Applying now...');
-            requestWorkerActivation(nextWorker);
+            pendingUpdateWorker = registration.waiting || nextWorker;
+            updateAppUpdateButtonState();
+            notify('info', 'New app version available. Click "Apply Update" in the sidebar.');
           }
         });
       });
     } catch (err){
       console.warn('Service worker registration failed:', err);
     }
+    updateAppUpdateButtonState();
     updateInstallAppButtonState();
   });
 }

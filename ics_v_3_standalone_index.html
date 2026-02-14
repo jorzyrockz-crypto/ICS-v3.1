@@ -392,6 +392,8 @@ body.sidebar-collapsed .sidebar-profile-identity{display:none}
 body.sidebar-collapsed .sidebar-profile-avatar{cursor:pointer}
 .sidebar-install{
   margin-bottom:8px;
+  display:grid;
+  gap:6px;
 }
 .sidebar-install-btn{
   width:100%;
@@ -5370,6 +5372,7 @@ body[data-theme="crimson-black"] .wmr-modal .detail-table tbody tr:hover td{
     <div class="sidebar-foot">
       <div class="sidebar-install">
         <button id="installAppBtn" class="small-btn add sidebar-install-btn" type="button" onclick="installPWAApp()">Install App</button>
+        <button id="updateAppBtn" class="small-btn add sidebar-install-btn" type="button" onclick="checkForPWAUpdateManual()">Check Update</button>
       </div>
       <div class="sidebar-profile">
         <div class="sidebar-profile-main">

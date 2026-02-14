@@ -20,6 +20,7 @@ const sidebarProfileBtn = document.getElementById('sidebarProfileBtn');
 const sidebarSignOutIconBtn = document.getElementById('sidebarSignOutIconBtn');
 const sidebarToggleBtn = document.getElementById('sidebarToggleBtn');
 const installAppBtn = document.getElementById('installAppBtn');
+const updateAppBtn = document.getElementById('updateAppBtn');
 const sidebarUserAvatar = document.getElementById('sidebarUserAvatar');
 const sidebarUserName = document.getElementById('sidebarUserName');
 const sidebarUserRole = document.getElementById('sidebarUserRole');
