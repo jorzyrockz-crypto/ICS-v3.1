@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'ics-v3-pwa-v74';
+const CACHE_VERSION = 'ics-v3-pwa-v75';
 const APP_SHELL = './ics_v_3_standalone_index.html';
 const PRECACHE = [
   './',
