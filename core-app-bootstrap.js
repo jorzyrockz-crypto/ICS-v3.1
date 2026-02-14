@@ -48,6 +48,25 @@ function getReleaseNotesForVersion(version){
   return Array.isArray(RELEASE_NOTES_BY_VERSION[key]) ? RELEASE_NOTES_BY_VERSION[key] : [];
 }
 
+function buildReleaseNotesText(version){
+  const notes = getReleaseNotesForVersion(version);
+  const fallbackNote = ['General quality, reliability, and UX improvements.'];
+  const entries = notes.length ? notes : fallbackNote;
+  const lines = entries.map((line, idx) => `${idx + 1}. ${line}`).join('\n');
+  return { entries, lines };
+}
+
+function showReleaseNotesModalForVersion(version, options = {}){
+  const normalizedVersion = String(version || '').trim();
+  if (!normalizedVersion) return;
+  const includeNotification = options.includeNotification === true;
+  const details = buildReleaseNotesText(normalizedVersion);
+  showModal(`What\'s New in v${normalizedVersion}`, details.lines);
+  if (includeNotification){
+    notify('info', `What\'s New v${normalizedVersion}: ${details.entries.join(' | ')}`);
+  }
+}
+
 async function getRuntimeAppVersion(){
   const fallbackVersion = String(APP_UI_VERSION_FALLBACK || '').trim();
   try {
@@ -68,16 +87,31 @@ async function announceReleaseNotesIfNeeded(){
   if (!version) return;
   const lastSeenVersion = String(localStorage.getItem(LAST_SEEN_APP_VERSION_STORAGE_KEY) || '').trim();
   if (lastSeenVersion === version) return;
-
-  const notes = getReleaseNotesForVersion(version);
-  const fallbackNote = ['General quality, reliability, and UX improvements.'];
-  const lines = (notes.length ? notes : fallbackNote)
-    .map((line, idx) => `${idx + 1}. ${line}`)
-    .join('\n');
-
-  showModal(`What\'s New in v${version}`, lines);
-  notify('info', `What\'s New v${version}: ${(notes.length ? notes : fallbackNote).join(' | ')}`);
+  showReleaseNotesModalForVersion(version, { includeNotification: true });
   localStorage.setItem(LAST_SEEN_APP_VERSION_STORAGE_KEY, version);
+}
+
+function initializeReleaseNotesQuickAccess(){
+  if (!brandSub) return;
+  brandSub.setAttribute('role', 'button');
+  brandSub.setAttribute('tabindex', '0');
+  brandSub.title = 'Show What\'s New';
+  brandSub.style.cursor = 'pointer';
+
+  const openLatestReleaseNotes = async () => {
+    const version = await getRuntimeAppVersion();
+    if (!version) return;
+    showReleaseNotesModalForVersion(version, { includeNotification: false });
+  };
+
+  brandSub.addEventListener('click', () => {
+    openLatestReleaseNotes();
+  });
+  brandSub.addEventListener('keydown', (event) => {
+    if (event.key !== 'Enter' && event.key !== ' ') return;
+    event.preventDefault();
+    openLatestReleaseNotes();
+  });
 }
 
 function isAppRunningStandalone(){

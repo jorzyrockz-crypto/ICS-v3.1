@@ -416,6 +416,7 @@ initializeKeyboardRouting();
 
 registerPWAServiceWorker();
 updateInstallAppButtonState();
+initializeReleaseNotesQuickAccess();
 bootAppWithUserPreferences();
 announceReleaseNotesIfNeeded();
 
