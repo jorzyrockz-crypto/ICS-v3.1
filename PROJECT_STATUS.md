@@ -1,7 +1,161 @@
 # Project ICS v3 - Status Checkpoint
 
-Last updated: 2026-02-14
+Last updated: 2026-02-15
 Main file: `ics_v_3_standalone_index.html`
+
+## Newly Implemented (2026-02-15, unserviceable/archive/WMR/batch-print workflow refinements + table scroll + toast containment)
+- Unserviceable modal workflow and data structure upgrades:
+  - replaced legacy situation list with six numbered situations and mapped remarks/notes guidance
+  - split Unserviceable capture into separate `Remarks` and `Notes` fields
+  - changed `Remarks` from freeform area to situation-dependent dropdown
+  - added dynamic guidance rendering for selected situation and persisted `remarks` in inspection logs
+  - improved Inspection History table structure (`Situation`, `Remark`, `Notes`, richer `Recorded` metadata with WMR-prepared markers)
+- Action Center table and archive gating updates:
+  - added EUL Action Center `Remarks` column after `Inspection`, sourced from latest inspection (with fallback inference for legacy logs)
+  - archive row action now enables only when latest inspection is `unserviceable` and has remarks
+  - added server-side/runtime guard in `openArchiveModal(...)` to enforce same archive precondition
+  - archive modal `Cancel` now closes only (no automatic return to Unserviceable modal)
+- WMR save/archive behavior realignment:
+  - WMR `Save` now archives selected WMR-prepared items directly into `Archived Disposal Items` as new rows
+  - save flow removes archived items from active `icsRecords`, updates lineage/audit, and keeps per-row/archive print actions usable
+  - added `Archive Approval Status` field in WMR and wired value into archived disposal status (instead of forced approved state)
+  - WMR draft fields now clear after successful save/archive, with default `Place of Storage` restored
+  - `Place of Storage` now supports autosuggest (`datalist`) from record + archived WMR history
+- Archives batch print builder mode:
+  - `Batch Print WMR` now opens builder mode in WMR panel (instead of immediate multi-print sequence)
+  - builder supports item matching by `Item No.` or `ICS/ItemNo`, auto-adds matched row, and appends a fresh input row for repeat entry
+  - added item autosuggest list in builder input and conditional `Print` button (shown when 2+ rows selected)
+  - added builder `Cancel` control and `Esc` behavior to exit builder mode cleanly
+  - removed hard one-ICS restriction for builder print selection; mixed ICS entries can now print in one generated form
+- Notification/UI containment and table overflow handling:
+  - fixed stray toast rendering in Archives by excluding `wasteReportOverlay` from modal-toast host targets
+  - enabled automatic horizontal scroll-on-overflow behavior for table wrappers, including Action Center EUL table (`actions-eul-wrap`)
+
+## Newly Implemented (2026-02-15, archives WMR workspace migration + action/archive workflow realignment)
+- Action Center table simplification:
+  - removed `Batch` checkbox column from EUL Action Center table
+  - removed local Action Center density toggle UI (global profile density remains active)
+  - header Batch PRINT WMR button restyled with printer icon and no count indicator
+- Welcome/header readability refinement:
+  - increased dark-theme readability for welcome title/subtitle via stronger contrast and subtle subtitle surface treatment
+- Theme catalog changes:
+  - removed `elegant-green` and `nord` themes from token map, theme picker, and related swatch/background styles
+  - added two new playful variants: `playful-coral` and `playful-mint` with full token integration and picker entries
+- Inspection/Action workflow changes:
+  - removed top-level print button from Inspection History modal; retained per-row print icon action only
+  - moved `Archive Item` initiation from Unserviceable modal to EUL Action Center row Actions column (after Inspection History) with subtle divider
+  - removed `Archive Item` button from Unserviceable modal markup (including fallback injected modal template)
+- WMR workflow migration to Archives:
+  - moved WMR draft surface from modal stack into Archives view as inline staged-style panel
+  - Archives now hosts WMR draft above Archived Disposal table for one-surface workflow
+  - WMR panel redesigned to staged-style composition:
+    - title changed to `Waste Materials Report` with `DRAFT` pill
+    - removed close button and retained Save-only footer action
+    - removed visible auto-populated summary block (ICS/entity/item-count/prepared-at)
+    - removed Additional Notes field
+    - reordered layout so items table appears before signatories
+    - signatories arranged as 4-column row with subtle divider above section
+    - default blank row seeded in items table when no active WMR target is loaded
+- Archives disposal actions and printing:
+  - added per-row `Print Waste Materials Report` icon in Archived Disposal Actions column (disabled when no prepared WMR metadata)
+  - moved Batch Print WMR control from Action Center to Archived Disposal container header
+  - added archived-scope batch print handler that prints prepared archived entries within current Archives filter scope
+
+## Newly Implemented (2026-02-15, dashboard recent-activity extraction + records/action-center behavior refinements)
+- Dashboard recent-activity modularization and redesign:
+  - extracted Recent ICS Activity card data/render logic into dedicated module `core-dashboard-recent-activity.js`
+  - dashboard metrics now hydrate recent cards through module call (`hydrateRecentIcsActivityCards(records)`) instead of inline card-template logic
+  - redesigned recent cards to structured 4-part layout (ICS header row, status badges, info rows, last-activity footer)
+  - card styling now supports tone-coded backgrounds by status (`tone-ok`, `tone-new`, `tone-imported`, `tone-risk`) and keeps tone colors consistent across themes
+  - refined typography, spacing, and icon balance for recent cards; added dashboard-widget hover/focus effects across KPI/action/compliance/recent/notes cards
+- Shell/layout spacing updates:
+  - desktop `.main` horizontal padding increased iteratively and currently set to `padding:45px 70px 24px`
+  - welcome subtitle spacing increased (`.welcome-subtitle` bottom margin now `20px`)
+- Inventory records table fit/readability pass:
+  - added compact sizing adjustments for records table controls/cells to improve one-screen fit at larger global side padding
+  - enabled dynamic content-based column sizing for `Manage Inventory` records table (`.ics-records-table` now `table-layout:auto` with scoped min-width guards)
+  - EUL status cell in records table now renders as default two-line stack (`eul-stack`) to reduce sparse top-row appearance
+- Action Center batch-print workflow updates:
+  - Batch PRINT WMR no longer depends on checkbox selection; now uses current Action Center scope/filter as source
+  - batch button count now reflects eligible disposal-ready items in current scope
+  - tightened eligibility rule so only items whose **latest** inspection state is `unserviceable` with reason `Item for disposal` are included (items changed to `serviceable` are excluded)
+- Welcome subtitle context improvements:
+  - welcome subheading now appends dynamic current-state summary per view (dashboard/inventory/action-center/archives context counts + active filter scope)
+- Runtime/script cleanup progress:
+  - removed inline handlers from `ics_v_3_standalone_index.html` and moved wiring into delegated/action-based JS handling
+  - moved inline Lucide initialization into dedicated module `core-icon-init.js`
+  - continued migration away from inline `on*` handlers across runtime render paths
+
+## Newly Implemented (2026-02-15, header simplification + auth/profile modal redesign + instant profile theme load)
+- Welcome/banner presentation refinement:
+  - removed legacy boxed welcome wrapper treatment and simplified header rendering to title + subtitle flow
+  - removed `System Live | ICS Manager` badge from welcome header
+  - centered welcome title/subtitle and tightened spacing control for cleaner hierarchy
+  - greeting icon switched to emoji set (`🌅`, `☀️`, `🌙`)
+  - added dark-theme readability overrides for welcome title/subtitle/icon glow
+  - increased adjustable top spacing above welcome area via `.main` padding tuning
+- Dashboard container cleanup:
+  - removed heavy outer `dash-overview` container chrome (border/background/shadow/padding shell) for lighter composition
+  - validated `Recent ICS Activity` remained on stable card layout after rollback from exploratory redesign pass
+- Login + Create Personnel modal UI overhaul:
+  - login modal redesigned with cleaner spacing, stronger label hierarchy, iconized field labels, and dark-theme specific contrast tuning
+  - removed inner login body container boxes for flatter, cleaner form flow
+  - setup/personnel modal reworked with modern section headers, field meta labels (`Required`, `Optional`, `Permission set`), iconized input shells, and footer action split (`Cancel` + primary CTA)
+  - personnel mode copy/layout updated to `Create Personnel Profile` direction (`Workplace Context`, `Personnel Identity`, refined subtitle/CTA text)
+  - added gradient border and visible glow treatments for login/personnel modals with dark-theme visibility adjustments
+- Personnel setup behavior updates:
+  - removed school field read-only state in personnel creation flow (`setupSchoolName`, `setupSchoolId` now editable)
+  - removed legacy personnel helper line (`Create a new personnel profile for this school.`) and auto-hide empty setup hint
+- Theme/profile load performance improvements:
+  - applied theme+density at startup immediately after profile load to reduce first-paint mismatch
+  - on remembered-session restore, now applies selected profile theme/density/default view immediately
+  - on manual login, now applies selected profile theme/density/default view immediately without refresh
+
+## Newly Implemented (2026-02-15, PWA update controls + theme/token polish + shell alignment)
+- PWA update flow and user controls:
+  - added manual update control in sidebar (`Check Update` -> `Apply Update`) with guided modal sequence
+  - update flow now supports user-confirmed apply and explicit post-apply instruction (`close and open app again`)
+  - startup update detection restored as notify-only (no forced auto-apply), keeping user-controlled apply path
+  - service worker registration hardened with `updateViaCache:'none'` and explicit update checks during detection flows
+  - service worker cache/version advanced iteratively; current cache version now `ics-v3-pwa-v86`
+- Release visibility improvements:
+  - one-time per-version `What's New` modal added with persistent seen-version tracking (`icsLastSeenAppVersion`)
+  - `What's New` entries also written to Notification Center on first-seen version
+  - sidebar version label (`System Manager v.x`) made clickable/keyboard-accessible to reopen update notes on demand
+- Theme system additions and consistency pass:
+  - added two elegant-white accent variants: `elegant-sky` and `elegant-emerald`
+  - tokenized Data Hub and ICS Details modal color surfaces to align with active theme variables
+  - staged-items card/table visuals now inherit floating-form (`--sheet-*`) tokens for utility parity
+  - table typography normalized via density-aware tokens:
+    - comfortable: `12.5 / 11.5 / 10.5` (body/head/meta)
+    - compact: `10.5 / 9.5 / 9.5` (body/head/meta)
+  - normalized size inheritance for table inline links/mono/status chips to reduce per-column text-size mismatch
+- Shell/topbar/sidebar UX polish:
+  - topbar school identity reformatted into split label + ID accent chip for better readability and truncation behavior
+  - collapse-sidebar control moved out of brand/logo row into dedicated sidebar control row
+  - collapsed sidebar footer icon alignment tuned so controls share a centered axis
+
+## Newly Implemented (2026-02-15, unified button system + WMR redesign + autosuggest pass)
+- Button system standardization:
+  - introduced semantic button model (`.btn` + `primary/secondary/danger/ghost` variants with `sm/md/lg` sizing)
+  - aligned button interaction states globally (hover/active/focus-visible/disabled) via shared tokenized rules
+  - migrated legacy action markup across runtime renderers from `small-btn` semantics to explicit `btn` classes
+  - normalized icon-button targets and behavior, with staged/table contexts using compact icon sizing where appropriate
+- Staged-items UX and theme token integration:
+  - refined staged table action density, EUL stepper spacing, and footer CTA spacing/readability
+  - added truncation+tooltip behavior for long `Working ICS` context text in staged header
+  - converted staged color styling to theme-driven token family (`--staged-*`) and wired to theme application flow
+- Waste Materials Report (WMR) modal design alignment:
+  - rebuilt WMR modal structure to use ICS Details design language (`icsd-*` cards/sections/header rhythm)
+  - aligned WMR typography, spacing, card/table treatment, and dark-theme behavior with ICS Details conventions
+  - improved WMR header controls (iconized close control, right-pinned header action alignment, section/action icon polish)
+- WMR signatories behavior update:
+  - switched WMR signatory handling from heavy fallback auto-populate to autosuggest-from-existing-records pattern
+  - added field-level datalist suggestions sourced from historical ICS signatories + prior WMR metadata
+- Profile/Setup designation input UX update:
+  - replaced Identity/Setup `Designation` dropdowns with autosuggest inputs (`datalist`) while preserving school designation governance logic
+  - updated designation option binding helpers to support both select and input+datalist modes
+  - improved Profile Identity pane spacing, padding, and typography to better match ICS Details card rhythm
 
 ## Newly Implemented (2026-02-14, responsive UX + notifications + dashboard/readability pass)
 - Versioning advanced again:
@@ -412,6 +566,54 @@ Main file: `ics_v_3_standalone_index.html`
    - Confirm records/activity are restored to previous state.
 
 ## Changelog (Recent)
+- 2026-02-15:
+  - Upgraded Unserviceable modal flow to six numbered situations with structured `Remarks` + `Notes` separation, situation-linked remarks dropdown, and dynamic guidance text.
+  - Updated Inspection History recording presentation to explicit `Situation` / `Remark` / `Notes` columns with stronger recorded metadata context.
+  - Added Action Center EUL `Remarks` column and archive activation guard (latest inspection must be Unserviceable with remarks), with runtime enforcement in archive open path.
+  - Changed Archive modal `Cancel` behavior to close only (no auto-return to Unserviceable modal).
+  - Reworked WMR save path to archive selected items immediately into Archived Disposal rows, remove items from active records, and keep archive print availability.
+  - Added WMR `Archive Approval Status` field and persisted selected status into archived disposal metadata.
+  - Added WMR `Place of Storage` autosuggest and post-save field reset handling.
+  - Replaced Archives Batch Print immediate execution with WMR batch builder mode (item-match row builder, autosuggest input, conditional print button, cancel + Esc exit).
+  - Removed one-ICS restriction in batch builder print selection to support mixed-ICS single-form print generation.
+  - Fixed stray toast banner in inline Archives WMR panel by excluding `wasteReportOverlay` from modal toast host detection.
+  - Applied automatic horizontal table scrolling on overflow (including Action Center EUL wrapper) to improve dense-table usability.
+  - Extracted Recent ICS Activity card pipeline into `core-dashboard-recent-activity.js` and wired `core-dashboard-metrics.js` to module-driven hydration.
+  - Reworked Recent ICS Activity cards to structured status-coded design and enforced tone background consistency across themes.
+  - Added dashboard widget hover/focus motion pass across KPI/action/compliance/recent/notes cards.
+  - Removed remaining inline handler dependencies from main runtime markup and moved icon bootstrap to `core-icon-init.js`.
+  - Increased desktop `.main` horizontal padding to `70px` (current: `padding:45px 70px 24px`) and adjusted records table fit strategy accordingly.
+  - Applied `Manage Inventory` records table dynamic content sizing (`.ics-records-table` auto layout + scoped min-width guards).
+  - Updated records EUL cell rendering to default two-line stack for consistent row density.
+  - Updated Action Center Batch PRINT WMR flow to use current scope/filter instead of checkbox dependency.
+  - Tightened batch eligibility to latest inspection state (`unserviceable` + `Item for disposal`) so reverted serviceable items are excluded.
+  - Added dynamic view-state summary text to welcome subtitle per active view context.
+  - Simplified welcome header presentation (removed live badge/container shell), centered greeting typography, and refined spacing controls.
+  - Switched greeting icon to emoji and added dark-theme readability overrides for welcome title/subtitle.
+  - Reworked login modal UI with cleaner spacing, flatter layout, iconized labels, and improved dark-theme contrast behavior.
+  - Reworked Create Personnel flow styling with sectioned identity/context layout, field helper metadata, iconized input shells, and split footer actions.
+  - Updated personnel setup copy to `Create Personnel Profile` direction and removed redundant helper hint line.
+  - Removed read-only enforcement from School Name/School ID in personnel creation mode.
+  - Added/adjusted gradient border + glow treatments for login/personnel modals with stronger dark-theme visibility.
+  - Improved profile preference boot/login responsiveness by applying theme+density/default-view immediately on startup, remembered-session restore, and manual login.
+  - Added semantic button system (`.btn` variants + size scale) and migrated runtime action markup to explicit button intent classes.
+  - Unified button interaction states and icon-button behavior; tuned staged-table control density and EUL stepper readability.
+  - Made staged workspace visual styling fully theme-aware using dedicated `--staged-*` tokens applied via theme pipeline.
+  - Redesigned WMR modal to ICS Details visual system (`icsd-*`) and aligned typography/spacing/cards/tables with modal uniformity.
+  - Refined WMR header controls (right-pinned close action, lucide close icon, section/action icon additions, dark-theme hover consistency).
+  - Switched WMR signatory fields to autosuggest from existing records/history via datalist, reducing forced fallback auto-population.
+  - Replaced Profile/Setup designation dropdowns with autosuggest inputs and updated designation option hydrators for datalist mode.
+  - Polished Profile Identity pane spacing/padding/font rhythm for closer consistency with ICS Details design language.
+  - Added manual/confirm-based PWA update control path in sidebar (`Check Update` / `Apply Update`) with guided modal messaging.
+  - Added version-based `What's New` announcement flow and made version subtitle clickable to reopen release notes.
+  - Restored startup update detection as notify-only while keeping manual apply semantics.
+  - Added `elegant-sky` and `elegant-emerald` accent variants (elegant-white derivatives).
+  - Tokenized Data Hub + ICS Details modal surfaces to better adhere to active theme variables.
+  - Unified staged utility visuals to floating form token family (`--sheet-*`) for consistency.
+  - Normalized table typography with density-aware tokens and improved inline text-size inheritance across table columns.
+  - Moved collapse button away from brand row and improved collapsed-sidebar control alignment.
+  - Updated topbar school identity rendering to name + ID chip treatment.
+  - Advanced service worker cache version through iterative updates; current `sw.js` cache is `ics-v3-pwa-v113`.
 - 2026-02-14:
   - Bumped app/UI baseline to `3.3`, schema/export baseline to `3.3.0`, and service worker cache to `ics-v3-pwa-v74`.
   - Added bottom-nav responsive pattern for mobile + tablet portrait, including center `New ICS` action and adjusted shell spacing.

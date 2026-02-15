@@ -184,8 +184,14 @@ function tryRestoreRememberedSession(){
   currentUser = normalizeUser({ ...selected, lastLogin: new Date().toISOString() });
   saveCurrentUser();
   upsertCurrentUserForSchool(saved.schoolId);
+  applyThemeAccent(currentUser.preferences?.themeAccent || 'elegant-white');
+  tableDensity = (currentUser.preferences?.tableDensity || tableDensity || 'comfortable').toLowerCase();
+  if (!['comfortable', 'compact'].includes(tableDensity)) tableDensity = 'comfortable';
+  applyTableDensity();
   sessionState = { loggedIn: true, schoolId: saved.schoolId, profileKey: saved.profileKey, remember: true, sessionId: createSessionId() };
   saveSavedSession();
+  const startView = PROFILE_VIEWS.includes(currentUser.preferences?.defaultView) ? currentUser.preferences.defaultView : 'Dashboard';
+  goToView(startView);
   renderUserIdentity();
   renderAppLogo();
   return true;
@@ -284,9 +290,15 @@ function submitLogin(){
   });
   saveCurrentUser();
   upsertCurrentUserForSchool(schoolId);
-  renderUserIdentity();
+  applyThemeAccent(currentUser.preferences?.themeAccent || 'elegant-white');
+  tableDensity = (currentUser.preferences?.tableDensity || tableDensity || 'comfortable').toLowerCase();
+  if (!['comfortable', 'compact'].includes(tableDensity)) tableDensity = 'comfortable';
+  applyTableDensity();
   sessionState = { loggedIn: true, schoolId, profileKey: currentUser.profileKey, remember, sessionId: createSessionId() };
   saveSavedSession();
+  const startView = PROFILE_VIEWS.includes(currentUser.preferences?.defaultView) ? currentUser.preferences.defaultView : 'Dashboard';
+  goToView(startView);
+  renderUserIdentity();
   setLoginHint(`Logged in as ${currentUser.name}.`, 'success');
   closeLoginModal();
   notify('success', `Logged in as ${currentUser.name}.`);
@@ -313,8 +325,17 @@ function renderUserIdentity(){
   if (sidebarUserName) sidebarUserName.textContent = currentUser.name || 'Custodian';
   if (sidebarUserRole) sidebarUserRole.textContent = formatUserRoleLine(currentUser);
   if (topSchoolTitle){
-    const suffix = schoolIdentity.schoolId ? ` [ID: ${schoolIdentity.schoolId}]` : '';
-    topSchoolTitle.textContent = `${schoolIdentity.schoolName}${suffix}`;
+    const schoolNameRaw = (schoolIdentity.schoolName || 'School').toString().trim() || 'School';
+    const schoolIdRaw = (schoolIdentity.schoolId || '').toString().trim();
+    const schoolName = escapeHTML(schoolNameRaw);
+    if (schoolIdRaw){
+      const schoolId = escapeHTML(schoolIdRaw);
+      topSchoolTitle.innerHTML = `<span class="school-name">${schoolName}</span><span class="school-id-chip">ID: ${schoolId}</span>`;
+      topSchoolTitle.title = `${schoolNameRaw} [ID: ${schoolIdRaw}]`;
+    } else {
+      topSchoolTitle.innerHTML = `<span class="school-name">${schoolName}</span>`;
+      topSchoolTitle.title = schoolNameRaw;
+    }
   }
   if (sidebarProfileBtn){
     sidebarProfileBtn.title = `Open profile for ${currentUser.name || 'Custodian'}`;

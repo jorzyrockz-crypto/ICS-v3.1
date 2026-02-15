@@ -1,4 +1,4 @@
-﻿function renderDashboardView(){
+function renderDashboardView(){
   const canEdit = hasRoleCapability('edit_records');
   const canImport = hasRoleCapability('import_data');
   const canExport = hasRoleCapability('export_data');
@@ -10,8 +10,8 @@ ${renderWelcomeBanner('Dashboard')}
 
 <section class="dash-overview">
   <div class="dash-overview-actions-row">
-    <button class="small-btn" onclick="goToView('Manage Inventory')">View Records</button>
-    <button class="small-btn finalize" onclick="dashboardNewICS()" ${canEdit ? '' : 'disabled title="Requires Encoder/Admin role"'}>Create New ICS</button>
+    <button class="btn btn-sm btn-secondary" data-action="goToView" data-arg1="Manage Inventory"><i data-lucide="list" aria-hidden="true"></i>View Records</button>
+    <button class="btn btn-sm btn-primary" data-action="dashboardNewICS" ${canEdit ? '' : 'disabled title="Requires Encoder/Admin role"'}><i data-lucide="plus" aria-hidden="true"></i>Create New ICS</button>
   </div>
 
   <div class="dash-overview-kpis">
@@ -43,12 +43,12 @@ ${renderWelcomeBanner('Dashboard')}
 
   <div class="dash-overview-grid">
     <div class="dash-action-card">
-      <div class="dash-action-head">${actionIcon('download')}<button class="small-btn" onclick="openDataManagerModal('import')" ${canImport ? '' : 'disabled title="Requires Encoder/Admin role"'}>Open</button></div>
+      <div class="dash-action-head">${actionIcon('download')}<button class="btn btn-sm btn-secondary" data-action="openDataManagerModal" data-arg1="import" ${canImport ? '' : 'disabled title="Requires Encoder/Admin role"'}><i data-lucide="folder-open" aria-hidden="true"></i>Open</button></div>
       <h4>Import Center</h4>
       <p>Validate JSON, review conflicts, merge or replace.</p>
     </div>
     <div class="dash-action-card">
-      <div class="dash-action-head">${actionIcon('upload')}<button class="small-btn" onclick="openDataManagerModal('export')" ${canExport ? '' : 'disabled title="Requires Viewer/Encoder/Admin role"'}>Open</button></div>
+      <div class="dash-action-head">${actionIcon('upload')}<button class="btn btn-sm btn-secondary" data-action="openDataManagerModal" data-arg1="export" ${canExport ? '' : 'disabled title="Requires Viewer/Encoder/Admin role"'}><i data-lucide="folder-open" aria-hidden="true"></i>Open</button></div>
       <h4>Export Center</h4>
       <p>Download filtered package or full workspace backup.</p>
     </div>
@@ -71,12 +71,12 @@ ${renderWelcomeBanner('Dashboard')}
       <p class="dash-comp-tip">Tip: Use Actions to review items nearing or past EUL.</p>
     </div>
     <div class="dash-action-card">
-      <div class="dash-action-head">${actionIcon('shield')}<button class="small-btn" onclick="dashboardOpenActions()">Review</button></div>
+      <div class="dash-action-head">${actionIcon('shield')}<button class="btn btn-sm btn-secondary" data-action="dashboardOpenActions"><i data-lucide="clipboard-check" aria-hidden="true"></i>Review</button></div>
       <h4>Action Center</h4>
       <p>Inspect risks, EUL alerts, and pending maintenance tasks.</p>
     </div>
     <div class="dash-action-card">
-      <div class="dash-action-head">${actionIcon('archive')}<button class="small-btn" onclick="dashboardOpenArchives()">Browse</button></div>
+      <div class="dash-action-head">${actionIcon('archive')}<button class="btn btn-sm btn-secondary" data-action="dashboardOpenArchives"><i data-lucide="folder-search" aria-hidden="true"></i>Browse</button></div>
       <h4>Archives</h4>
       <p>Browse archived items and export history trails.</p>
     </div>
@@ -86,16 +86,9 @@ ${renderWelcomeBanner('Dashboard')}
 <section class="dash-recent-wrap">
   <div class="dash-recent-head">
     <h3>Recent ICS Activity</h3>
-    <button class="small-btn" onclick="goToView('Manage Inventory')">Open list</button>
+    <button class="btn btn-sm btn-secondary" data-action="goToView" data-arg1="Manage Inventory"><i data-lucide="list" aria-hidden="true"></i>Open list</button>
   </div>
-  <div class="detail-table-wrap">
-    <table class="detail-table dash-recent-table">
-      <thead>
-        <tr><th>#</th><th>ICS No.</th><th>Entity</th><th>Accountable</th><th>EUL</th><th>Value</th><th>Last action</th></tr>
-      </thead>
-      <tbody id="dashRecentIcsRows"></tbody>
-    </table>
-  </div>
+  <div class="dash-recent-cards" id="dashRecentIcsRows"></div>
 </section>
 
 <section class="dash-notes-wrap">

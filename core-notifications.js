@@ -193,7 +193,6 @@ function getTopShownOverlay(){
     'dataImportOverlay',
     'dataValidationOverlay',
     'dataExportOverlay',
-    'wasteReportOverlay',
     'archiveOverlay',
     'inspectionOverlay',
     'inspectionHistoryOverlay',

@@ -85,15 +85,26 @@ function ensureDesignationForSchool(schoolId, designation){
 }
 
 function setDesignationSelectOptions(selectId, selectedValue, schoolId){
-  const select = document.getElementById(selectId);
-  if (!select) return;
+  const field = document.getElementById(selectId);
+  if (!field) return;
   const sid = normalizeSchoolId(schoolId || schoolIdentity.schoolId || '');
   const list = getDesignationsForSchool(sid);
-  select.innerHTML = `<option value="">Select designation</option>`
-    + list.map((name) => `<option value="${escapeHTML(name)}">${escapeHTML(name)}</option>`).join('');
   const selected = normalizeDesignationValue(selectedValue || '');
-  select.value = list.includes(selected) ? selected : '';
-  if (!select.value && list.length) select.value = list[0];
+  const isSelect = (field.tagName || '').toLowerCase() === 'select';
+  if (isSelect){
+    field.innerHTML = `<option value="">Select designation</option>`
+      + list.map((name) => `<option value="${escapeHTML(name)}">${escapeHTML(name)}</option>`).join('');
+    field.value = list.includes(selected) ? selected : '';
+    if (!field.value && list.length) field.value = list[0];
+    return;
+  }
+  const listId = `${selectId}List`;
+  const datalist = document.getElementById(listId);
+  if (datalist){
+    datalist.innerHTML = list.map((name) => `<option value="${escapeHTML(name)}"></option>`).join('');
+  }
+  field.value = list.includes(selected) ? selected : '';
+  if (!field.value && list.length) field.value = list[0];
 }
 
 function renderDesignationManager(){
@@ -106,8 +117,9 @@ function renderDesignationManager(){
   const list = getDesignationsForSchool(sid);
   host.innerHTML = list.length
     ? list.map((name) => {
+      const encodedDesignation = encodeURIComponent(name);
       const removeBtn = canManage
-        ? ` <button type="button" class="small-btn del" style="padding:2px 8px;font-size:11px" onclick="removeDesignationFromProfile('${escapeHTML(name).replace(/'/g, '&#39;')}')">Remove</button>`
+        ? ` <button type="button" class="btn btn-sm btn-danger profile-designation-remove-btn" data-designation-remove="${encodedDesignation}" style="padding:2px 8px;font-size:11px">Remove</button>`
         : '';
       return `<div style="display:flex;align-items:center;justify-content:space-between;gap:8px"><span>${escapeHTML(name)}</span><span>${removeBtn}</span></div>`;
     }).join('')

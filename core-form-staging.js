@@ -102,11 +102,14 @@ function setStageContext(meta){
   if (!el) return;
   if (!meta || !meta.icsNo){
     el.textContent = 'Working ICS: none';
+    el.title = 'Working ICS: none';
     return;
   }
   const modeText = meta.mode ? `${meta.mode}: ` : '';
   const entityText = meta.entity ? ` | ${meta.entity}` : '';
-  el.textContent = `Working ICS: ${modeText}${meta.icsNo}${entityText}`;
+  const fullText = `Working ICS: ${modeText}${meta.icsNo}${entityText}`;
+  el.textContent = fullText;
+  el.title = fullText;
 }
 
 function getCurrentFormMeta(){
@@ -304,23 +307,23 @@ function addRow(seed = {}){
   const eulRaw = seed.eul === undefined || seed.eul === null || seed.eul === '' ? '' : String(seed.eul);
   const tr = document.createElement('tr');
   tr.innerHTML = `<td class="row-index">${i}</td>
-    <td><input class="stage-input stage-desc" list="stageDescList" value="${(seed.desc || '').replace(/"/g, '&quot;')}" oninput="handleDescInput(this)" /></td>
-    <td><input class="stage-input stage-itemno" value="${(seed.itemNo || '').replace(/"/g, '&quot;')}" onfocus="prefillItemNo(this)" oninput="onItemNoInput(this)" /></td>
-    <td><input class="stage-input stage-qty" value="${qtyRaw.replace(/"/g, '&quot;')}" oninput="syncRow(this)" /></td>
-    <td><input class="stage-input stage-unit" list="stageUnitList" value="${(seed.unit || '').replace(/"/g, '&quot;')}" onfocus="updateUnitSuggestionsForRow(this.closest('tr'))" /></td>
-    <td><input class="stage-input stage-unitcost" value="${unitCostRaw}" oninput="syncRow(this)" onblur="formatCurrencyInput(this)" /></td>
+    <td><input class="stage-input stage-desc" list="stageDescList" value="${(seed.desc || '').replace(/"/g, '&quot;')}" /></td>
+    <td><input class="stage-input stage-itemno" value="${(seed.itemNo || '').replace(/"/g, '&quot;')}" /></td>
+    <td><input class="stage-input stage-qty" value="${qtyRaw.replace(/"/g, '&quot;')}" /></td>
+    <td><input class="stage-input stage-unit" list="stageUnitList" value="${(seed.unit || '').replace(/"/g, '&quot;')}" /></td>
+    <td><input class="stage-input stage-unitcost" value="${unitCostRaw}" /></td>
     <td><input class="stage-input stage-total" readonly value="${totalRaw}" /></td>
     <td>
       <div class="stage-eul">
-        <button class="eul-btn" onclick="adjustEUL(this,-1)">-</button>
+        <button class="eul-btn" data-stage-eul-delta="-1">-</button>
         <input class="stage-input eul-input stage-eul-input" readonly value="${eulRaw}" />
-        <button class="eul-btn" onclick="adjustEUL(this,1)">+</button>
+        <button class="eul-btn" data-stage-eul-delta="1">+</button>
       </div>
     </td>
     <td>
       <div class="stage-cell-actions">
-        <button class="small-btn add icon-only-btn" title="Add Row" aria-label="Add Row" onclick="addRow()"><i data-lucide="plus" aria-hidden="true"></i></button>
-        <button class="small-btn del icon-only-btn" title="Delete Row" aria-label="Delete Row" onclick="delRow(this)"><i data-lucide="trash-2" aria-hidden="true"></i></button>
+        <button class="btn btn-sm btn-secondary btn-icon icon-only-btn stage-add-row-btn" title="Add Row" aria-label="Add Row"><i data-lucide="plus" aria-hidden="true"></i></button>
+        <button class="btn btn-sm btn-danger btn-icon icon-only-btn stage-del-row-btn" title="Delete Row" aria-label="Delete Row"><i data-lucide="trash-2" aria-hidden="true"></i></button>
       </div>
     </td>`;
   body.appendChild(tr);

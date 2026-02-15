@@ -218,50 +218,11 @@ function initDashboardView(){
   if (riskEl){
     const topRisk = riskItems.slice(0, 10);
     riskEl.innerHTML = topRisk.length
-      ? topRisk.map((r, i) => `<tr><td>${i + 1}</td><td><button class="ics-link-btn" onclick="openICSDetailsByKey('${escapeHTML(r.icsNo)}','${escapeHTML(r.itemNo)}')">${escapeHTML(r.icsNo)}</button></td><td>${escapeHTML(r.itemNo)}</td><td>${escapeHTML(r.desc)}</td><td><span class="risk-badge ${r.code === 'past' ? 'danger' : 'warn'}">${escapeHTML(r.status)}</span></td></tr>`).join('')
+      ? topRisk.map((r, i) => `<tr><td>${i + 1}</td><td><button class="ics-link-btn" data-action="openICSDetailsByKey" data-arg1="${escapeHTML(r.icsNo)}" data-arg2="${escapeHTML(r.itemNo)}">${escapeHTML(r.icsNo)}</button></td><td>${escapeHTML(r.itemNo)}</td><td>${escapeHTML(r.desc)}</td><td><span class="risk-badge ${r.code === 'past' ? 'danger' : 'warn'}">${escapeHTML(r.status)}</span></td></tr>`).join('')
       : '<tr><td colspan="5" class="empty-cell">No risk items right now.</td></tr>';
   }
 
-  const recentIcsRows = records.map((r) => {
-    const m = computeRecordMetrics(r);
-    const items = Array.isArray(r.items) ? r.items : [];
-    const allOk = items.length > 0 && items.every((it) => classifyEULItem(r, it).code === 'ok');
-    const eulLabel = allOk ? 'Within EUL' : 'Outside EUL';
-    const eulTone = allOk ? 'ok' : 'danger';
-    const lineage = normalizeRecordLineage(r?._lineage || r?.lineage);
-    const latestLineage = (lineage?.versions || []).slice().reverse()[0] || null;
-    const statusMeta = r?._statusMeta || {};
-    const statusRaw = (statusMeta.type || latestLineage?.action || 'updated').toString().toLowerCase();
-    const actionLabel = statusRaw === 'imported' ? 'Imported' : (statusRaw === 'new' ? 'New' : 'Updated');
-    const actionAtRaw = latestLineage?.at || statusMeta.at || '';
-    const actionAtDate = new Date(actionAtRaw);
-    const actionAt = Number.isFinite(actionAtDate.getTime()) ? actionAtDate.toLocaleString() : '-';
-    return {
-      icsNo: r.icsNo || '-',
-      entity: r.entity || '-',
-      accountable: r.accountable || '-',
-      eulLabel,
-      eulTone,
-      totalValue: formatCurrencyValue(m.totalValue) || '0.00',
-      actionLabel,
-      actionAt,
-      sortAt: Number.isFinite(actionAtDate.getTime()) ? actionAtDate.getTime() : 0
-    };
-  }).sort((a, b) => b.sortAt - a.sortAt).slice(0, 4);
-  const recentIcsEl = document.getElementById('dashRecentIcsRows');
-  if (recentIcsEl){
-    recentIcsEl.innerHTML = recentIcsRows.length
-      ? recentIcsRows.map((r, i) => `<tr>
-          <td>${i + 1}</td>
-          <td><button class="ics-link-btn" onclick="openICSDetailsByKey('${escapeHTML(r.icsNo)}','')">${escapeHTML(r.icsNo)}</button> <span class="risk-badge">${escapeHTML(r.actionLabel)}</span></td>
-          <td>${escapeHTML(r.entity)}</td>
-          <td>${escapeHTML(r.accountable)}</td>
-          <td><span class="risk-badge ${r.eulTone}">${escapeHTML(r.eulLabel)}</span></td>
-          <td>${escapeHTML(r.totalValue)}</td>
-          <td>${escapeHTML(r.actionAt)}</td>
-        </tr>`).join('')
-      : '<tr><td colspan="7" class="empty-cell">No recent ICS activity.</td></tr>';
-  }
+  hydrateRecentIcsActivityCards(records);
 
   const dashNoteSync = document.getElementById('dashNoteSync');
   if (dashNoteSync){

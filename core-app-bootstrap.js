@@ -1,16 +1,24 @@
 function bootAppWithUserPreferences(){
+  const applyCurrentUserVisualPrefs = (renderStartView = false) => {
+    applyThemeAccent(currentUser.preferences?.themeAccent || 'elegant-white');
+    tableDensity = (currentUser.preferences?.tableDensity || tableDensity || 'comfortable').toLowerCase();
+    if (!['comfortable', 'compact'].includes(tableDensity)) tableDensity = 'comfortable';
+    applyTableDensity();
+    renderUserIdentity();
+    if (!renderStartView) return;
+    const startView = PROFILE_VIEWS.includes(currentUser.preferences?.defaultView) ? currentUser.preferences.defaultView : 'Dashboard';
+    goToView(startView);
+  };
+
   getCurrentDeviceId();
   ensureRecordLineageBaseline();
   currentUser.lastLogin = new Date().toISOString();
   saveCurrentUser();
   ensureDesignationForSchool(schoolIdentity.schoolId, currentUser.designation || '');
-  applyThemeAccent(currentUser.preferences?.themeAccent || 'elegant-white');
-  applyTableDensity();
-  renderUserIdentity();
+  applyCurrentUserVisualPrefs(false);
   schoolSetupEnforced = !isSchoolIdentityConfigured();
-  const startView = PROFILE_VIEWS.includes(currentUser.preferences?.defaultView) ? currentUser.preferences.defaultView : 'Dashboard';
-  goToView(startView);
   if (schoolSetupEnforced){
+    applyCurrentUserVisualPrefs(true);
     sessionState = { loggedIn: false, schoolId: '', profileKey: '', remember: false, sessionId: '' };
     setupWizardEnforced = true;
     openSetupModal(true);
@@ -19,9 +27,11 @@ function bootAppWithUserPreferences(){
   }
   upsertCurrentUserForSchool(schoolIdentity.schoolId);
   if (tryRestoreRememberedSession()){
+    applyCurrentUserVisualPrefs(false);
     notify('success', `Welcome back, ${currentUser.name}.`);
     return;
   }
+  applyCurrentUserVisualPrefs(true);
   sessionState = { loggedIn: false, schoolId: '', profileKey: '', remember: false, sessionId: '' };
   openLoginModal(true);
 }

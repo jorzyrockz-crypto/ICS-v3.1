@@ -1,6 +1,6 @@
 function animateViewEntrance(){
   const selectors = [
-    '.welcome-banner',
+    '.welcome-head-item',
     '.dash-story',
     '.dash-grid',
     '.dash-panels',
@@ -194,11 +194,12 @@ function initArchivesView(){
   body.innerHTML = archived.map((a, idx) => {
     const realIdx = allArchived.findIndex((entry) => entry === a);
     const actionIdx = realIdx >= 0 ? realIdx : idx;
+    const hasArchivedWmr = !!(a?.item?.wasteReport?.preparedAt);
     return `
     <tr>
       <td>${idx + 1}</td>
       <td>${(a.archivedAt || '').slice(0,10)}</td>
-      <td><button class="ics-link-btn" onclick="openArchivedItemHistory(${actionIdx})">${a.source?.icsNo || ''}</button></td>
+      <td><button class="ics-link-btn" data-action="openArchivedItemHistory" data-arg1="${actionIdx}">${a.source?.icsNo || ''}</button></td>
       <td>${a.item?.desc || ''}</td>
       <td>${a.item?.itemNo || ''}</td>
       <td style="text-align:center">${a.item?.eul ?? ''}</td>
@@ -206,7 +207,8 @@ function initArchivesView(){
       <td>${a.disposal?.approvedBy || '-'}</td>
       <td>${a.disposal?.remarks || '-'}</td>
       <td style="text-align:center">
-        <button class="small-btn add icon-only-btn" title="Unarchive Item" aria-label="Unarchive Item" onclick="unarchiveItem(${actionIdx})" ${canArchive ? '' : 'disabled'}><i data-lucide="undo-2" aria-hidden="true"></i></button>
+        <button class="btn btn-sm btn-secondary btn-icon icon-only-btn" title="${hasArchivedWmr ? 'Print Waste Materials Report' : 'No prepared Waste Materials metadata'}" aria-label="Print Waste Materials Report" data-action="printWasteMaterialsReportArchived" data-arg1="${actionIdx}" ${canArchive && hasArchivedWmr ? '' : 'disabled'}><i data-lucide="printer" aria-hidden="true"></i></button>
+        <button class="btn btn-sm btn-secondary btn-icon icon-only-btn" title="Unarchive Item" aria-label="Unarchive Item" data-action="unarchiveItem" data-arg1="${actionIdx}" ${canArchive ? '' : 'disabled'}><i data-lucide="undo-2" aria-hidden="true"></i></button>
       </td>
     </tr>
   `;
@@ -289,26 +291,43 @@ function renderEULPage(){
         ? '<span class="risk-badge danger">Unserviceable</span>'
         : '<span class="risk-badge ok">Serviceable</span>')
       : '<span class="card-subtext">Not inspected</span>';
+    const reason = (row.inspection?.reason || '').toString().trim();
+    const rawRemarks = (row.inspection?.remarks || '').toString().trim();
+    const inferredRemarks = (typeof getUnserviceableRemarksText === 'function' && reason)
+      ? (getUnserviceableRemarksText(reason)[0] || '')
+      : '';
+    const remarks = rawRemarks || inferredRemarks;
+    const inspectionStatus = (row.inspection?.status || '').toString().trim().toLowerCase();
+    const isUnserviceableInspection = inspectionStatus === 'unserviceable';
+    const hasInspectionRemarks = !!remarks;
+    const canArchiveRow = !!(canArchive && isUnserviceableInspection && hasInspectionRemarks);
+    const archiveDisabledAttr = canArchiveRow
+      ? ''
+      : (!canArchive
+        ? 'disabled title="Requires Encoder/Admin role"'
+        : (!isUnserviceableInspection
+          ? 'disabled title="Requires Unserviceable inspection first"'
+          : 'disabled title="Requires Inspection Remarks first"'));
     return `<tr class="${isTargeted ? 'targeted-row' : ''}">
       <td>${idx + 1}</td>
-      <td><button class="ics-link-btn" onclick="openICSDetailsByKey('${row.icsNo.replace(/'/g, '&#39;')}','${(row.itemNo || '').replace(/'/g, '&#39;')}')">${row.icsNo}</button></td>
+      <td><button class="ics-link-btn" data-action="openICSDetailsByKey" data-arg1="${row.icsNo.replace(/"/g, '&quot;')}" data-arg2="${(row.itemNo || '').replace(/"/g, '&quot;')}">${row.icsNo}</button></td>
       <td>${row.desc}</td>
       <td style="text-align:center">${row.eulDays === '' ? '' : row.eulDays}</td>
       <td style="text-align:center"><span class="${row.cls}">${row.status}</span></td>
       <td style="text-align:center">${insp}</td>
+      <td>${remarks ? escapeHTML(remarks) : '<span class="card-subtext">-</span>'}</td>
       <td style="text-align:center">
         <div class="actions-eul-actions">
           ${targetBadge}
-          <select class="stage-input action-select" onchange="onInspectionChange(this,'${row.icsNo.replace(/'/g, '&#39;')}','${(row.itemNo || '').replace(/'/g, '&#39;')}')" ${canArchive ? '' : 'disabled title="Requires Encoder/Admin role"'}>
+          <select class="stage-input action-select" data-action-change="onInspectionChange" data-arg1="${row.icsNo.replace(/"/g, '&quot;')}" data-arg2="${(row.itemNo || '').replace(/"/g, '&quot;')}" ${canArchive ? '' : 'disabled title="Requires Encoder/Admin role"'}>
             <option value="">Select</option>
             <option value="serviceable">Serviceable</option>
             <option value="unserviceable">Unserviceable</option>
           </select>
-          <button class="small-btn add icon-only-btn" title="Inspection History" aria-label="Inspection History" onclick="openInspectionHistory('${row.icsNo.replace(/'/g, '&#39;')}','${(row.itemNo || '').replace(/'/g, '&#39;')}')"><i data-lucide="history" aria-hidden="true"></i></button>
+          <button class="btn btn-sm btn-secondary btn-icon icon-only-btn" title="Inspection History" aria-label="Inspection History" data-action="openInspectionHistory" data-arg1="${row.icsNo.replace(/"/g, '&quot;')}" data-arg2="${(row.itemNo || '').replace(/"/g, '&quot;')}"><i data-lucide="history" aria-hidden="true"></i></button>
+          <span class="actions-eul-divider" aria-hidden="true"></span>
+          <button class="btn btn-sm btn-secondary btn-icon icon-only-btn" title="Archive Item" aria-label="Archive Item" data-action="openArchiveModal" data-arg1="${row.icsNo.replace(/"/g, '&quot;')}" data-arg2="${(row.itemNo || '').replace(/"/g, '&quot;')}" ${archiveDisabledAttr}><i data-lucide="archive" aria-hidden="true"></i></button>
         </div>
-      </td>
-      <td style="text-align:center">
-        <input type="checkbox" ${actionCenterSelectedKeys[getActionItemKey(row.icsNo, row.itemNo)] ? 'checked' : ''} ${canArchive ? '' : 'disabled title="Requires Encoder/Admin role"'} onchange="toggleActionCenterSelection('${row.icsNo.replace(/'/g, '&#39;')}','${(row.itemNo || '').replace(/'/g, '&#39;')}', this.checked)" />
       </td>
     </tr>`;
   }).join('') : '<tr><td colspan="8" class="empty-cell">No items for current filter.</td></tr>';

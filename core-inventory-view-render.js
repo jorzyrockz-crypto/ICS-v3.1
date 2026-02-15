@@ -1,10 +1,10 @@
 function renderInventoryView(){
   const canEditRecords = hasRoleCapability('edit_records');
   const filterInfo = inventoryFilter === 'missing'
-    ? `<span class="risk-badge warn">Filtered: Missing Data</span> <button class="small-btn add" onclick="clearInventoryFilter()">Clear Filter</button>`
+    ? `<span class="risk-badge warn">Filtered: Missing Data</span> <button class="btn btn-sm btn-secondary" data-action="clearInventoryFilter"><i data-lucide="x" aria-hidden="true"></i>Clear Filter</button>`
     : '';
   const actionButtons = [
-    `<button class="small-btn finalize" onclick="finalizeICS()" ${canEditRecords ? '' : 'disabled title="Requires Encoder/Admin role"'}>Finalize ICS Data</button>`
+    `<button class="btn btn-sm btn-primary" data-action="finalizeICS" ${canEditRecords ? '' : 'disabled title="Requires Encoder/Admin role"'}><i data-lucide="check-circle-2" aria-hidden="true"></i>Finalize ICS Data</button>`
   ].join('');
   return `
 ${renderWelcomeBanner('Manage Inventory')}

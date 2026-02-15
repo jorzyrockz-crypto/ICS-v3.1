@@ -97,17 +97,39 @@ function openSetupModal(force = false, mode = 'initial'){
   const emailEl = document.getElementById('setupProfileEmail');
   const title = setupOverlay.querySelector('.modal-head h3');
   const sub = setupOverlay.querySelector('.modal-head .modal-sub');
-  const action = setupOverlay.querySelector('.modal-foot .small-btn.finalize');
+  const action = setupOverlay.querySelector('.modal-foot .btn.btn-primary');
+  const schoolSectionTitle = setupOverlay.querySelector('.setup-section-school .profile-section-title');
+  const schoolSectionSub = setupOverlay.querySelector('.setup-section-school .setup-section-sub');
+  const profileSectionTitle = setupOverlay.querySelector('.setup-section-profile .profile-section-title');
+  const profileSectionSub = setupOverlay.querySelector('.setup-section-profile .setup-section-sub');
   const lockSchool = setupMode === 'personnel' && isSchoolIdentityConfigured();
-  if (title) title.textContent = lockSchool ? 'Create Personnel Profile' : 'Setup School Workspace';
+  setupOverlay.classList.toggle('personnel-mode', lockSchool);
+  if (title) title.innerHTML = lockSchool
+    ? '<i data-lucide="user-plus" aria-hidden="true"></i>Create Personnel Profile'
+    : '<i data-lucide="school" aria-hidden="true"></i>Setup School Workspace';
   if (sub) sub.textContent = lockSchool
-    ? 'Add a new personnel profile under this School ID.'
+    ? 'Add a new staff member to the school directory.'
     : 'Create school identity and first personnel profile for this device.';
-  if (action) action.textContent = lockSchool ? 'Create Personnel Profile' : 'Create School and Continue';
+  if (action) action.innerHTML = lockSchool
+    ? '<i data-lucide="user-plus" aria-hidden="true"></i>Create Profile'
+    : '<i data-lucide="school" aria-hidden="true"></i>Create School and Continue';
+  if (schoolSectionTitle) schoolSectionTitle.innerHTML = lockSchool
+    ? '<span class="setup-step">1</span><i data-lucide="building-2" aria-hidden="true"></i>Workplace Context'
+    : '<span class="setup-step">1</span><i data-lucide="building-2" aria-hidden="true"></i>School';
+  if (schoolSectionSub) schoolSectionSub.textContent = lockSchool
+    ? 'Locked to your current workspace context.'
+    : '';
+  if (profileSectionTitle) profileSectionTitle.innerHTML = lockSchool
+    ? '<span class="setup-step">2</span><i data-lucide="user-round" aria-hidden="true"></i>Personnel Identity'
+    : '<span class="setup-step">2</span><i data-lucide="user-round" aria-hidden="true"></i>Personnel Profile';
+  if (profileSectionSub) profileSectionSub.textContent = lockSchool
+    ? ''
+    : 'Identity and permissions.';
+  if (typeof window.refreshIcons === 'function') window.refreshIcons();
   if (schoolNameEl) schoolNameEl.value = (schoolIdentity.schoolName || '').trim();
   if (schoolIdEl) schoolIdEl.value = normalizeSchoolId(schoolIdentity.schoolId || '');
-  if (schoolNameEl) schoolNameEl.disabled = lockSchool;
-  if (schoolIdEl) schoolIdEl.disabled = lockSchool;
+  if (schoolNameEl) schoolNameEl.disabled = false;
+  if (schoolIdEl) schoolIdEl.disabled = false;
   if (nameEl) nameEl.value = currentUser.name || '';
   setDesignationSelectOptions('setupProfileDesignation', currentUser.designation || '', schoolIdentity.schoolId);
   if (roleEl) roleEl.value = normalizeRoleKey(currentUser.role || 'encoder');
@@ -125,7 +147,7 @@ function openSetupModal(force = false, mode = 'initial'){
   if (designationEl && lockSchool) designationEl.value = designationEl.value || '';
   if (roleEl && lockSchool) roleEl.value = 'encoder';
   if (emailEl && lockSchool) emailEl.value = '';
-  setSetupHint(lockSchool ? 'Create a new personnel profile for this school.' : 'Complete setup to continue.', '');
+  setSetupHint(lockSchool ? '' : 'Complete setup to continue.', '');
   if (force) setupWizardEnforced = true;
   setupOverlay.classList.add('show');
   setTimeout(() => {
@@ -142,6 +164,7 @@ function closeSetupModal(){
     return;
   }
   setupOverlay?.classList?.remove('show');
+  setupOverlay?.classList?.remove('personnel-mode');
   if (!isSessionActive() && isSchoolIdentityConfigured()){
     openLoginModal(false);
   }

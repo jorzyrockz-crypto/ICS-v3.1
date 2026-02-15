@@ -276,6 +276,57 @@ function printWasteMaterialsReportForICS(icsNo){
   printWasteMaterialsReportBatch(icsNo, itemNos);
 }
 
+function printWasteMaterialsReportArchived(index){
+  if (!requireAccess('archive_items', { label: 'print archived Waste Materials Report' })) return;
+  const archived = getArchivedItems();
+  const entry = archived[index];
+  if (!entry){
+    notify('error', 'Archived item not found.');
+    return;
+  }
+  const item = entry.item || {};
+  if (!item?.wasteReport?.preparedAt){
+    notify('error', 'No prepared Waste Materials metadata found for this archived item.');
+    return;
+  }
+  const record = {
+    icsNo: entry?.source?.icsNo || '',
+    entity: entry?.source?.entity || '',
+    items: [item]
+  };
+  printWasteMaterialsReportPrepared(record, [item]);
+}
+
+function printBatchWasteMaterialsReportArchived(){
+  if (!requireAccess('archive_items', { label: 'print archived batch Waste Materials Report' })) return;
+  const allArchived = getArchivedItems();
+  const scoped = allArchived.filter((a) => {
+    if (!archivesFilterIcs) return true;
+    return normalizeICSKey(a?.source?.icsNo || '') === normalizeICSKey(archivesFilterIcs);
+  });
+  if (!scoped.length){
+    notify('error', 'No archived items available in current scope.');
+    return;
+  }
+  const targets = scoped
+    .map((entry) => allArchived.findIndex((x) => x === entry))
+    .filter((idx) => idx >= 0)
+    .filter((idx) => !!allArchived[idx]?.item?.wasteReport?.preparedAt);
+  if (!targets.length){
+    notify('error', 'No archived items with prepared Waste Materials metadata in current scope.');
+    return;
+  }
+  notify('info', `Batch printing WMR for ${targets.length} archived item(s).`);
+  let pos = 0;
+  const runNext = () => {
+    if (pos >= targets.length) return;
+    printWasteMaterialsReportArchived(targets[pos]);
+    pos += 1;
+    if (pos < targets.length) setTimeout(runNext, 700);
+  };
+  runNext();
+}
+
 function printWasteMaterialsReportBatch(icsNo, itemNos){
   if (!requireAccess('archive_items', { label: 'print Waste Materials Report' })) return;
   const records = JSON.parse(localStorage.getItem('icsRecords') || '[]');
@@ -303,7 +354,15 @@ function printWasteMaterialsReportBatch(icsNo, itemNos){
     notify('error', 'Selected items have no prepared Waste Materials metadata.');
     return;
   }
+  printWasteMaterialsReportPrepared(record, prepared);
+}
 
+function printWasteMaterialsReportPrepared(record, preparedItems){
+  const prepared = Array.isArray(preparedItems) ? preparedItems : [];
+  if (!record || !prepared.length){
+    notify('error', 'Unable to print Waste Materials Report. Missing print source.');
+    return;
+  }
   const base = prepared[0].wasteReport || {};
   const lines = prepared.map((it, idx) => {
     const wr = it.wasteReport || {};

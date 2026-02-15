@@ -119,7 +119,10 @@ function handleOverlayKeydown(e){
     else if (top === 'dataImportOverlay') closeDataImportModal();
     else if (top === 'dataValidationOverlay') closeDataValidationModal();
     else if (top === 'dataExportOverlay') closeDataExportModal();
-    else if (top === 'wasteReportOverlay') closeWasteReportModal();
+    else if (top === 'wasteReportOverlay'){
+      if (wmrBatchPrintMode) exitWmrBatchBuilderMode();
+      else closeWasteReportModal();
+    }
     else if (top === 'archiveOverlay') closeArchiveModal(true);
     else if (top === 'inspectionOverlay') closeInspectionModal();
     else if (top === 'inspectionHistoryOverlay') closeInspectionHistory();
@@ -148,7 +151,9 @@ function handleOverlayKeydown(e){
   }
   if (top === 'wasteReportOverlay'){
     e.preventDefault();
-    if (e.ctrlKey || e.metaKey) saveWasteReportMetadata(true);
+    if (wmrBatchPrintMode){
+      if (e.target?.closest?.('.wmr-batch-item-input')) commitWmrBatchItemInput(e.target);
+    } else if (e.ctrlKey || e.metaKey) saveWasteReportMetadata(true);
     else saveWasteReportMetadata(false);
     return true;
   }

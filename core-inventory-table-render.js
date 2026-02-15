@@ -112,6 +112,9 @@ function renderEULStatus(record){
   });
 
   const totalAtRisk = groups.overdue.length + groups.lt30.length + groups.lt90.length;
+  const renderStack = (line1, line2 = '&nbsp;') => (
+    `<div class="eul-stack"><div class="eul-line">${line1 || '&nbsp;'}</div><div class="eul-line">${line2 || '&nbsp;'}</div></div>`
+  );
   if (totalAtRisk){
     const summaryClass = groups.overdue.length ? 'danger' : 'warn';
     const summary = `<span class="risk-badge ${summaryClass}">At Risk: ${totalAtRisk} item${totalAtRisk === 1 ? '' : 's'}</span>`;
@@ -124,15 +127,16 @@ function renderEULStatus(record){
       if (!firstItemNo) return badge;
       const icsNo = escapeHTML(record.icsNo || '');
       const safeItem = escapeHTML(firstItemNo);
-      return `<button class="ics-link-btn" onclick="${action}('${icsNo}','${safeItem}')">${badge}</button>`;
+      return `<button class="ics-link-btn" data-action="${action}" data-arg1="${icsNo}" data-arg2="${safeItem}">${badge}</button>`;
     };
 
     const overdueBadge = renderTier('overdue', 'danger', 'Overdue', 'openPastEULForItem');
     const lt30Badge = renderTier('lt30', 'warn', 'Due <30d', 'openNearEULForItem');
     const lt90Badge = renderTier('lt90', 'near', 'Due <90d', 'openNearEULForItem');
-    return `${summary}${overdueBadge}${lt30Badge}${lt90Badge}`.trim();
+    const details = `${overdueBadge}${lt30Badge}${lt90Badge}`.trim();
+    return renderStack(summary, details);
   }
-  return '<span class="risk-badge ok">Within EUL</span>';
+  return renderStack('<span class="risk-badge ok">Within EUL</span>');
 }
 
 function renderValueCell(record){
@@ -174,7 +178,7 @@ function loadICSRecords(){
     const safeEntity = escapeHTML(r.entity || '');
     const tr = document.createElement('tr');
     tr.innerHTML = `<td>${rowIdx + 1}</td>
-      <td><div class="ics-no-wrap"><div class="ics-no-line"><button class="ics-link-btn" title="${safeIcs}" aria-label="Open ICS ${safeIcs}" onclick="openICSDetailsByIndex(${i})">${safeIcs}</button></div></div></td>
+      <td><div class="ics-no-wrap"><div class="ics-no-line"><button class="ics-link-btn" title="${safeIcs}" aria-label="Open ICS ${safeIcs}" data-action="openICSDetailsByIndex" data-arg1="${i}">${safeIcs}</button></div></div></td>
       <td>${statusMini}</td>
       <td>${safeEntity}</td>
       <td>${r.issuedDate}</td>
@@ -183,10 +187,10 @@ function loadICSRecords(){
       <td>${metrics.totalItems}</td>
       <td>${renderValueCell(r)}</td>
       <td>
-        <button class="small-btn add icon-only-btn" title="Edit ICS" aria-label="Edit ICS" onclick="editICS(${i})" ${canEdit ? '' : 'disabled'}><i data-lucide="pencil" aria-hidden="true"></i></button>
-        <button class="small-btn add icon-only-btn" title="Print ICS" aria-label="Print ICS" onclick="printICS(${i})"><i data-lucide="printer" aria-hidden="true"></i></button>
-        <button class="small-btn add icon-only-btn" title="Export ICS" aria-label="Export ICS" onclick="exportICS(${i})" ${canExport ? '' : 'disabled'}><i data-lucide="download" aria-hidden="true"></i></button>
-        <button class="small-btn del icon-only-btn" title="Delete ICS" aria-label="Delete ICS" onclick="deleteICS(${i})" ${canDelete ? '' : 'disabled'}><i data-lucide="trash-2" aria-hidden="true"></i></button>
+        <button class="btn btn-sm btn-secondary btn-icon icon-only-btn" title="Edit ICS" aria-label="Edit ICS" data-action="editICS" data-arg1="${i}" ${canEdit ? '' : 'disabled'}><i data-lucide="pencil" aria-hidden="true"></i></button>
+        <button class="btn btn-sm btn-secondary btn-icon icon-only-btn" title="Print ICS" aria-label="Print ICS" data-action="printICS" data-arg1="${i}"><i data-lucide="printer" aria-hidden="true"></i></button>
+        <button class="btn btn-sm btn-secondary btn-icon icon-only-btn" title="Export ICS" aria-label="Export ICS" data-action="exportICS" data-arg1="${i}" ${canExport ? '' : 'disabled'}><i data-lucide="download" aria-hidden="true"></i></button>
+        <button class="btn btn-sm btn-danger btn-icon icon-only-btn" title="Delete ICS" aria-label="Delete ICS" data-action="deleteICS" data-arg1="${i}" ${canDelete ? '' : 'disabled'}><i data-lucide="trash-2" aria-hidden="true"></i></button>
       </td>`;
     body.appendChild(tr);
   });

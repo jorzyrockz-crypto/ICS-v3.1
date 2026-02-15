@@ -79,7 +79,7 @@ function renderSearchResults(query){
   searchResults.innerHTML = searchMatches.map((m, idx) => {
     const cls = idx === searchActiveIndex ? 'search-item active' : 'search-item';
     const typeLabel = m.type === 'archive' ? 'Archived' : 'ICS';
-    return `<button class="${cls}" onclick="activateSearchResult(${idx})">
+    return `<button class="${cls}" data-action="activateSearchResult" data-arg1="${idx}">
       <div class="search-item-title">${escapeHTML(m.title)}<span class="search-item-type">${typeLabel}</span></div>
       <div class="search-item-meta">${escapeHTML(m.meta)}</div>
     </button>`;
@@ -294,7 +294,7 @@ function openICSDetailsModal(record, focusItemNo, recordIndex){
       <section class="icsd-head">
         <div class="icsd-head-left">
           <div class="icsd-head-title-row">
-            <button class="ics-link-btn icsd-ics-btn" onclick="icsDetailsEditFromTitle()">${safeIcsNo}</button>
+            <button class="ics-link-btn icsd-ics-btn" data-action="icsDetailsEditFromTitle">${safeIcsNo}</button>
             ${lineageIntegrity}
           </div>
           <div class="icsd-head-meta">
@@ -358,7 +358,7 @@ function openICSDetailsModal(record, focusItemNo, recordIndex){
                 <div class="icsd-activity-summary">${showAdvancedAudit ? latestSummary : escapeHTML('Record updated')}</div>
               ` : '<div class="lineage-empty">No activity yet for this record.</div>'}
             </div>
-            <button class="small-btn" onclick="openICSRecordHistoryModal()">${iconHistory}View record history</button>
+            <button class="btn btn-sm btn-secondary" data-action="openICSRecordHistoryModal">${iconHistory}View record history</button>
           </section>
         </div>
       </div>
@@ -385,9 +385,9 @@ function openICSDetailsModal(record, focusItemNo, recordIndex){
               const cls = classifyEULItem(record, it);
               const canTarget = itemNo.trim() !== '';
               const eulStatusCell = cls.code === 'past' && canTarget
-                ? `<button class="ics-link-btn" onclick="openPastEULForItem('${escapeHTML(record.icsNo || '')}','${escapeHTML(itemNo)}')"><span class="${cls.cls}">${cls.status}</span></button>`
+                ? `<button class="ics-link-btn" data-action="openPastEULForItem" data-arg1="${escapeHTML(record.icsNo || '')}" data-arg2="${escapeHTML(itemNo)}"><span class="${cls.cls}">${cls.status}</span></button>`
                 : cls.code === 'near' && canTarget
-                  ? `<button class="ics-link-btn" onclick="openNearEULForItem('${escapeHTML(record.icsNo || '')}','${escapeHTML(itemNo)}')"><span class="${cls.cls}">${cls.status}</span></button>`
+                  ? `<button class="ics-link-btn" data-action="openNearEULForItem" data-arg1="${escapeHTML(record.icsNo || '')}" data-arg2="${escapeHTML(itemNo)}"><span class="${cls.cls}">${cls.status}</span></button>`
                   : `<span class="${cls.cls}">${cls.status}</span>`;
               const inspLogs = Array.isArray(it.inspections) ? it.inspections : [];
               const lastInsp = inspLogs.length ? inspLogs[inspLogs.length - 1] : null;
@@ -608,7 +608,7 @@ function openArchivedItemHistory(index){
       </div>
       <div class="archived-sheet-foot">
         <div class="archived-foot-meta">Total Logs: ${inspections.length} <span class="archived-foot-ref">Ref: ${escapeHTML(refNo)}</span></div>
-        <button class="archived-export-btn" onclick="exportArchivedHistoryReport()">${iconExport}Export Archive Report</button>
+        <button class="archived-export-btn" data-action="exportArchivedHistoryReport">${iconExport}Export Archive Report</button>
       </div>
     </div>
   `;

@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'ics-v3-pwa-v78';
+const CACHE_VERSION = 'ics-v3-pwa-v113';
 const APP_SHELL = './ics_v_3_standalone_index.html';
 const PRECACHE = [
   './',
@@ -35,8 +35,10 @@ const PRECACHE = [
   './core-actions-view-render.js',
   './core-archives-view-render.js',
   './core-dashboard-actions.js',
+  './core-dashboard-recent-activity.js',
   './core-dashboard-metrics.js',
   './core-main-entry.js',
+  './core-icon-init.js',
   './manifest.webmanifest',
   './icons/icon-192.png',
   './icons/icon-512.png'
